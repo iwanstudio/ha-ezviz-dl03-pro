@@ -6,5 +6,6 @@
   "codeowners": ["@TwojUser"],
   "requirements": ["pyezvizapi==0.2.1.2"],
   "version": "1.0.0",
+  "config_flow": true,
   "iot_class": "cloud_polling"
 }

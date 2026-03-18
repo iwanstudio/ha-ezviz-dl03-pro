@@ -76,7 +76,6 @@ class EzvizWifiSSIDSensor(EzvizBaseSensor):
 
     @property
     def native_value(self):
-        # Pobieranie SSID (np. Tenda_O3)
         return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("ssid")
 
 class EzvizIPAddressSensor(EzvizBaseSensor):
@@ -88,14 +87,13 @@ class EzvizIPAddressSensor(EzvizBaseSensor):
 
     @property
     def native_value(self):
-        # Pobieranie adresu IP urządzenia
         return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("address")
 
 class EzvizErrorCountSensor(EzvizBaseSensor):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
         self._attr_name = "Ezviz Błędne Próby"
-        self._attr_icon = "mdi:alert-lock"
+        self._attr_icon = "mdi:lock-alert" # POPRAWIONA IKONA (Wykrzyknik przy kłódce)
         self._attr_unique_id = f"{serial}_error_count"
 
     @property

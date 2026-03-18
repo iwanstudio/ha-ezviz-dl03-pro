@@ -1,6 +1,6 @@
 # Ezviz DL03 Pro Integration for Home Assistant 🚪🔓
 <p align="center">
-  <img src="https://raw.githubusercontent.com/TWOJ_LOGIN/ha-ezviz-dl03-pro/main/branding/logo.png" width="200">
+  <img src="https://raw.githubusercontent.com/iwanstudio/ha-ezviz-dl03-pro/main/branding/logo.png" width="200">
 </p>
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)

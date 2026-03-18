@@ -11,21 +11,37 @@ async def async_setup_entry(hass, entry):
     client = EzvizClient(entry.data["username"], entry.data["password"], entry.data.get("region", "eu"))
     serial_target = entry.data["serial_number"].strip()
     
+    # Przechowujemy czas ostatniego alarmu, żeby poller go nie nadpisał
+    coordinator_extra = {
+        "last_alarm_time": 0,
+        "lock_hold": False
+    }
+
     async def async_update_data():
         def fetch():
             client.login()
             return client.get_device_infos()
-        return await hass.async_add_executor_job(fetch)
+        
+        new_data = await hass.async_add_executor_job(fetch)
+        
+        # Jeśli niedawno (ostatnie 20 sek) był alarm rygla, nie pozwól pollerowi go zmienić
+        if coordinator.doorbell_ringing or coordinator_extra["lock_hold"]:
+             _LOGGER.debug("Poller pomija aktualizację rygla/drzwi ze względu na aktywny alarm.")
+             if serial_target in coordinator.data and serial_target in new_data:
+                 new_data[serial_target]["STATUS"]["optionals"]["dlLock"] = coordinator.data[serial_target]["STATUS"]["optionals"]["dlLock"]
+                 new_data[serial_target]["STATUS"]["optionals"]["dlDoor"] = coordinator.data[serial_target]["STATUS"]["optionals"]["dlDoor"]
+        
+        return new_data
 
     coordinator = DataUpdateCoordinator(
         hass, _LOGGER, name="ezviz_dl03_pro",
         update_method=async_update_data,
-        update_interval=timedelta(seconds=5), # Zmieniono na 5 sekund
+        update_interval=timedelta(seconds=5),
     )
 
     await coordinator.async_config_entry_first_refresh()
     coordinator.last_event_id = ""
-    coordinator.last_event = "Brak nowych zdarzeń"
+    coordinator.last_event = "Czekam na ruch..."
     coordinator.doorbell_ringing = False
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
@@ -44,36 +60,44 @@ async def async_setup_entry(hass, entry):
                     msg_text = latest.get("alarmMessage", "")
                     
                     if alarm_id != coordinator.last_event_id:
-                        _LOGGER.info(f"Nowe zdarzenie (ID: {alarm_id}): {msg_text}")
+                        _LOGGER.info(f"NOWE ZDARZENIE: {msg_text}")
                         coordinator.last_event_id = alarm_id
                         coordinator.last_event = msg_text
-                        
                         low_msg = msg_text.lower()
                         
-                        # Aktualizacja stanów na podstawie tekstu alarmu
-                        if "unlock" in low_msg:
+                        # Blokujemy nadpisywanie przez poller na czas aktualizacji chmury
+                        coordinator_extra["lock_hold"] = True
+                        
+                        # RYGIEL
+                        if "unlocked" in low_msg or "unlock" in low_msg:
                             coordinator.data[serial_target]["STATUS"]["optionals"]["dlLock"] = 1
-                        elif "locked" in low_msg:
+                        elif "locked" in low_msg or "lock" in low_msg:
                             coordinator.data[serial_target]["STATUS"]["optionals"]["dlLock"] = 0
                         
+                        # DRZWI
                         if "door opened" in low_msg or "is open" in low_msg:
                             coordinator.data[serial_target]["STATUS"]["optionals"]["dlDoor"] = 1
                         elif "door closed" in low_msg or "is closed" in low_msg:
                             coordinator.data[serial_target]["STATUS"]["optionals"]["dlDoor"] = 0
                         
+                        # DZWONEK
                         if "rings" in low_msg or "bell" in low_msg:
                             coordinator.doorbell_ringing = True
                             coordinator.async_set_updated_data(coordinator.data)
                             await asyncio.sleep(8)
                             coordinator.doorbell_ringing = False
                         
-                        # Natychmiastowe odświeżenie po wykryciu alarmu
-                        await coordinator.async_request_refresh()
+                        # Odświeżamy sensory w HA
+                        coordinator.async_set_updated_data(coordinator.data)
+                        
+                        # Po 20 sekundach pozwalamy pollerowi znowu czytać z chmury (chmura powinna być już gotowa)
+                        await asyncio.sleep(20)
+                        coordinator_extra["lock_hold"] = False
                 
             except Exception as err:
-                _LOGGER.error("Błąd nasłuchu zdarzeń: %s", err)
+                _LOGGER.error("Błąd listenera: %s", err)
             
-            await asyncio.sleep(5)
+            await asyncio.sleep(3) # Szybszy nasłuch zdarzeń
 
     entry.async_create_background_task(hass, fast_listener(), "ezviz-realtime")
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor"])

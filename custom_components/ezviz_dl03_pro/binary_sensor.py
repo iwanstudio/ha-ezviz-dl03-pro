@@ -1,5 +1,6 @@
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.entity import DeviceInfo
 from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -15,16 +16,18 @@ class EzvizLockBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator)
         self.serial = serial
-        self._attr_name = "Ezviz Rygiel"
+        self._attr_name = "Ezviz Zamek"
         self._attr_unique_id = f"{serial}_lock_status"
         self._attr_device_class = BinarySensorDeviceClass.LOCK
-        # Odwracamy logikę: 0 (locked) = Off (bezpiecznie), 1 (unlocked) = On (uwaga)
-        self._attr_is_on = False 
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, serial)}, name=f"Zamek DL03 Pro ({serial})")
 
     @property
     def is_on(self):
-        data = self.coordinator.data.get(self.serial, {})
-        return data.get("STATUS", {}).get("optionals", {}).get("dlLock") == 1
+        # Bezpieczne pobieranie danych (zabezpieczenie przed None)
+        data = self.coordinator.data.get(self.serial, {}) if self.coordinator.data else {}
+        status = data.get("STATUS", {}) or {}
+        opts = status.get("optionals", {}) or {}
+        return opts.get("dlLock") == 1
 
     @property
     def icon(self):
@@ -37,11 +40,14 @@ class EzvizDoorBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_name = "Ezviz Drzwi"
         self._attr_unique_id = f"{serial}_door_status"
         self._attr_device_class = BinarySensorDeviceClass.DOOR
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, serial)}, name=f"Zamek DL03 Pro ({serial})")
 
     @property
     def is_on(self):
-        data = self.coordinator.data.get(self.serial, {})
-        return data.get("STATUS", {}).get("optionals", {}).get("dlDoor") == 1
+        data = self.coordinator.data.get(self.serial, {}) if self.coordinator.data else {}
+        status = data.get("STATUS", {}) or {}
+        opts = status.get("optionals", {}) or {}
+        return opts.get("dlDoor") == 1
 
     @property
     def icon(self):
@@ -54,6 +60,7 @@ class EzvizBellBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_name = "Ezviz Dzwonek"
         self._attr_unique_id = f"{serial}_bell_status"
         self._attr_device_class = BinarySensorDeviceClass.SOUND
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, serial)}, name=f"Zamek DL03 Pro ({serial})")
 
     @property
     def is_on(self):
@@ -61,5 +68,4 @@ class EzvizBellBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def icon(self):
-        # TUTAJ: Ikona "dzwoniącego" dzwonka, gdy ktoś naciśnie
         return "mdi:bell-ring" if self.is_on else "mdi:bell-outline"

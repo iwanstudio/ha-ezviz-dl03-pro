@@ -71,6 +71,8 @@ Required data: **Email, Password, Device Serial Number.**
 [EN] This project is unofficial and not affiliated with Ezviz. Use it at your own risk.
 
 ---
+<img width="324" height="625" alt="image" src="https://github.com/user-attachments/assets/4d669524-f151-4cce-8219-72ae93dcabd9" />
+
 
 ## 🛠 Autor / Author
 Stworzone przez **iwanstudio**. Jeśli Ci się podoba, zostaw ⭐!

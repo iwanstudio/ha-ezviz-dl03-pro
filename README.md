@@ -4,7 +4,14 @@
   <img src="https://raw.githubusercontent.com/iwanstudio/ha-ezviz-dl03-pro/main/branding/logo.png" width="300">
 </p>
 
-[![Open your Home Assistant instance and open the repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badget/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=iwanstudio&repository=ha-ezviz-dl03-pro&category=integration)
+<p align="center">
+  <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=iwanstudio&repository=ha-ezviz-dl03-pro&category=integration">
+    <img src="https://my.home-assistant.io/badge/hacs_repository.svg" alt="Open HACS Repository">
+  </a>
+  <a href="https://my.home-assistant.io/redirect/config_flow_start/?domain=ezviz_dl03_pro">
+    <img src="https://my.home-assistant.io/badge/config_flow_start.svg" alt="Add Integration">
+  </a>
+</p>
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 ![Version](https://img.shields.io/badge/version-v2.6.0-blue.svg)

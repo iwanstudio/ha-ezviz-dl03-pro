@@ -1,9 +1,9 @@
 {
   "domain": "ezviz_dl03",
   "name": "Ezviz DL03 Pro Lock",
-  "documentation": "https://github.com/TwojUser/ha-ezviz-dl03-pro",
+  "documentation": "https://github.com/TWOJ_USER/ha-ezviz-dl03-pro",
   "dependencies": [],
-  "codeowners": ["@TwojUser"],
+  "codeowners": ["@TWOJ_USER"],
   "requirements": ["pyezvizapi==0.2.1.2"],
   "version": "1.0.0",
   "config_flow": true,

@@ -15,7 +15,7 @@
 </p>
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/badge/version-v2.6.0-blue.svg)
+![Version](https://img.shields.io/badge/dynamic/json?color=blue&label=version&query=$.version&url=https://raw.githubusercontent.com/iwanstudio/ha-ezviz-dl03-pro/main/custom_components/ezviz_dl03_pro/manifest.json)
 ![Maintainer](https://img.shields.io/badge/maintainer-iwanstudio-blue.svg)
 
 ---

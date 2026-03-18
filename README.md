@@ -1,7 +1,7 @@
 # Ezviz DL03 Pro Integration for Home Assistant 🚪🔓
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![Maintainer](https://img.shields.io/badge/maintainer-Piotrek-blue.svg)](https://github.com/TWOJA_NAZWA_UZYTKOWNIKA)
+[![Maintainer](https://img.shields.io/badge/maintainer-iwanstudio-blue.svg)](https://github.com/iwanstudio)
 
 Nieoficjalna integracja dla zamka inteligentnego **Ezviz DL03 Pro**, stworzona specjalnie dla modeli, które nie są poprawnie obsługiwane przez oficjalną integrację Ezviz w Home Assistant.
 

@@ -1,61 +1,65 @@
-from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
-    BinarySensorDeviceClass,
-)
+from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.entity import DeviceInfo
 from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
     serial = entry.data["serial_number"]
-    
     async_add_entities([
-        EzvizBinarySensor(coordinator, serial, "dlLock", "Zamek", BinarySensorDeviceClass.LOCK),
-        EzvizBinarySensor(coordinator, serial, "dlDoor", "Drzwi", BinarySensorDeviceClass.DOOR),
-        EzvizDoorbellSensor(coordinator, serial)
+        EzvizLockBinarySensor(coordinator, serial),
+        EzvizDoorBinarySensor(coordinator, serial),
+        EzvizBellBinarySensor(coordinator, serial)
     ])
 
-class EzvizBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Sensor dla rygla i skrzydła drzwi."""
-    def __init__(self, coordinator, serial, key, name, device_class):
+class EzvizLockBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    def __init__(self, coordinator, serial):
         super().__init__(coordinator)
         self.serial = serial
-        self.key = key
-        self._attr_name = f"Ezviz {name}"
-        self._attr_device_class = device_class
-        self._attr_unique_id = f"{serial}_{key}"
-        
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, serial)},
-            name=f"Zamek DL03 Pro ({serial})",
-            manufacturer="Ezviz",
-            model="DL03 Pro",
-        )
+        self._attr_name = "Ezviz Rygiel"
+        self._attr_unique_id = f"{serial}_lock_status"
+        self._attr_device_class = BinarySensorDeviceClass.LOCK
+        # Odwracamy logikę: 0 (locked) = Off (bezpiecznie), 1 (unlocked) = On (uwaga)
+        self._attr_is_on = False 
 
     @property
     def is_on(self):
-        """Zwraca stan z danych koordynatora."""
-        data = self.coordinator.data.get(self.serial, {}).get("STATUS", {}).get("optionals", {})
-        # 1 = Odblokowane/Otwarte (ON), 0 = Zablokowane/Zamknięte (OFF)
-        return data.get(self.key) == 1
+        data = self.coordinator.data.get(self.serial, {})
+        return data.get("STATUS", {}).get("optionals", {}).get("dlLock") == 1
 
-class EzvizDoorbellSensor(CoordinatorEntity, BinarySensorEntity):
-    """Sensor dzwonka wykrywający naciśnięcie przycisku."""
+    @property
+    def icon(self):
+        return "mdi:lock-open-variant" if self.is_on else "mdi:lock"
+
+class EzvizDoorBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    def __init__(self, coordinator, serial):
+        super().__init__(coordinator)
+        self.serial = serial
+        self._attr_name = "Ezviz Drzwi"
+        self._attr_unique_id = f"{serial}_door_status"
+        self._attr_device_class = BinarySensorDeviceClass.DOOR
+
+    @property
+    def is_on(self):
+        data = self.coordinator.data.get(self.serial, {})
+        return data.get("STATUS", {}).get("optionals", {}).get("dlDoor") == 1
+
+    @property
+    def icon(self):
+        return "mdi:door-open" if self.is_on else "mdi:door-closed"
+
+class EzvizBellBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator)
         self.serial = serial
         self._attr_name = "Ezviz Dzwonek"
+        self._attr_unique_id = f"{serial}_bell_status"
         self._attr_device_class = BinarySensorDeviceClass.SOUND
-        self._attr_unique_id = f"{serial}_doorbell"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, serial)},
-            name=f"Zamek DL03 Pro ({serial})",
-            manufacturer="Ezviz",
-            model="DL03 Pro",
-        )
 
     @property
     def is_on(self):
-        """Pobiera stan dzwonka ustawiony przez fast_listener w __init__.py"""
-        return getattr(self.coordinator, 'doorbell_ringing', False)
+        return getattr(self.coordinator, "doorbell_ringing", False)
+
+    @property
+    def icon(self):
+        # TUTAJ: Ikona "dzwoniącego" dzwonka, gdy ktoś naciśnie
+        return "mdi:bell-ring" if self.is_on else "mdi:bell-outline"

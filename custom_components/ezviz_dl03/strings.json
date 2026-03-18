@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Logowanie Ezviz DL03 Pro",
+        "data": {
+          "username": "Email/Użytkownik",
+          "password": "Hasło",
+          "serial_number": "Numer Seryjny (9 cyfr)",
+          "region": "Region (domyślnie eu)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie udało się połączyć z Ezviz",
+      "invalid_auth": "Błędne hasło lub login",
+      "unknown": "Wystąpił nieoczekiwany błąd"
+    }
+  }
+}

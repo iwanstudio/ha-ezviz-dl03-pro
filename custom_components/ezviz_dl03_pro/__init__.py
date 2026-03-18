@@ -14,7 +14,7 @@ async def async_setup_entry(hass, entry):
     async def async_update_data():
         def fetch():
             client.login()
-            # Biblioteka zwraca słownik {serial: dane}
+            # Zwraca słownik {serial: dane}
             return client.get_device_infos()
         return await hass.async_add_executor_job(fetch)
 
@@ -33,24 +33,24 @@ async def async_setup_entry(hass, entry):
     async def fast_listener():
         while True:
             try:
-                # W pyezvizapi używamy get_device_messages_list
+                # Pobieramy listę wiadomości dla konkretnego zamka
                 def get_messages():
                     return client.get_device_messages_list(serial_target)
                 
                 messages = await hass.async_add_executor_job(get_messages)
                 
-                # Jeśli mamy listę wiadomości i nie jest pusta
                 if messages and isinstance(messages, list) and len(messages) > 0:
-                    latest = messages[0] # Najnowsza wiadomość
+                    # Bierzemy najnowszą wiadomość (zazwyczaj indeks 0)
+                    latest = messages[0]
                     msg_text = latest.get("msgText", "")
                     
-                    if msg_text != coordinator.last_event:
-                        _LOGGER.info(f"Nowe powiadomienie z zamka: {msg_text}")
+                    if msg_text and msg_text != coordinator.last_event:
+                        _LOGGER.info(f"Nowa wiadomość Ezviz: {msg_text}")
                         coordinator.last_event = msg_text
                         
                         low_msg = msg_text.lower()
-                        # LOGIKA ZAMKA
-                        if "unlocked" in low_msg or "unlock" in low_msg:
+                        # LOGIKA ZAMKA (Unlocked / Indoor unlock)
+                        if "unlock" in low_msg:
                             coordinator.data[serial_target]["STATUS"]["optionals"]["dlLock"] = 1
                         elif "locked" in low_msg or "closed" in low_msg:
                             coordinator.data[serial_target]["STATUS"]["optionals"]["dlLock"] = 0
@@ -59,16 +59,16 @@ async def async_setup_entry(hass, entry):
                         if "rings" in low_msg or "bell" in low_msg:
                             coordinator.doorbell_ringing = True
                             coordinator.async_set_updated_data(coordinator.data)
-                            await asyncio.sleep(7)
+                            await asyncio.sleep(8)
                             coordinator.doorbell_ringing = False
                         
                         coordinator.async_set_updated_data(coordinator.data)
                 
             except Exception as err:
-                _LOGGER.error("Błąd podczas pobierania wiadomości: %s", err)
+                _LOGGER.error("Błąd podczas odczytu wiadomości: %s", err)
             
             await asyncio.sleep(5)
 
-    entry.async_create_background_task(hass, fast_listener(), "ezviz-msg-listener")
+    entry.async_create_background_task(hass, fast_listener(), "ezviz-pro-fast-listener")
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor"])
     return True

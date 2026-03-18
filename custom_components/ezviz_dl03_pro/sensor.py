@@ -23,7 +23,7 @@ class EzvizBatterySensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
-        # Ścieżka z Twojego JSONa: STATUS -> optionals -> multiPower -> Remaining
+        # Pobieranie danych o baterii z JSONa
         data = self.coordinator.data.get(self.serial, {})
         power = data.get("STATUS", {}).get("optionals", {}).get("multiPower", [])
         if power:
@@ -41,4 +41,5 @@ class EzvizEventSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
-        return self.coordinator.last_event
+        # DODAJEMY FALLBACK: Jeśli last_event nie istnieje, zwróć tekst domyślny
+        return getattr(self.coordinator, "last_event", "Brak nowych zdarzeń")

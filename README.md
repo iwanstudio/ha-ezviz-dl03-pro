@@ -4,53 +4,54 @@
 </p>
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![Maintainer](https://img.shields.io/badge/maintainer-iwanstudio-blue.svg)](https://github.com/iwanstudio)
+![Version](https://img.shields.io/badge/version-v2.6.0-blue.svg)
+![Maintainer](https://img.shields.io/badge/maintainer-iwanstudio-blue.svg)
 
-Nieoficjalna integracja dla zamka inteligentnego **Ezviz DL03 Pro**, stworzona specjalnie dla modeli, które nie są poprawnie obsługiwane przez oficjalną integrację Ezviz w Home Assistant.
+[PL] Nieoficjalna, zaawansowana integracja dla zamka inteligentnego **Ezviz DL03 Pro**, stworzona specjalnie dla modeli, które nie są poprawnie obsługiwane przez standardowe rozwiązania. Dzięki zastosowaniu mechanizmu **Fast Listener**, integracja reaguje na zdarzenia niemal w czasie rzeczywistym.
 
-## ✨ Funkcje
-Integracja wyciąga z chmury Ezviz dane, które zazwyczaj są ukryte dla standardowych sensorów:
-- **Stan Rygla** (Zablokowany / Odblokowany) - Klasa urządzenia: `lock`.
-- **Stan Drzwi** (Zamknięte / Otwarte) - Klasa urządzenia: `door`.
-- **Poziom Baterii** (%) - Z dokładnym śledzeniem zużycia.
-- **Status Online** - Informacja o połączeniu zamka z siecią Wi-Fi.
+[EN] Unofficial, advanced integration for the **Ezviz DL03 Pro** smart lock. Specifically designed for models not fully supported by standard integrations. Featuring a **Fast Listener** mechanism for near real-time event response.
 
-## 🚀 Instalacja
+---
 
-### Metoda 1: HACS (Zalecana)
-1. Upewnij się, że masz zainstalowany [HACS](https://hacs.xyz/).
-2. W Home Assistant przejdź do **HACS** -> **Integracje**.
-3. Kliknij trzy kropki w prawym górnym rogu i wybierz **Niestandardowe repozytoria** (Custom Repositories).
-4. Wklej URL tego repozytorium: `https://github.com/iwanstudio/ha-ezviz-dl03-pro/`.
-5. Jako kategorię wybierz **Integracja**.
-6. Kliknij **Dodaj**, a następnie **Pobierz** w oknie integracji.
-7. **Zrestartuj Home Assistant.**
+## ✨ Funkcje / Features (PL / EN)
 
-### Metoda 2: Ręczna
-1. Pobierz zawartość folderu `custom_components/ezviz_dl03/`.
-2. Wklej ją do folderu `/config/custom_components/ezviz_dl03/` w Twojej instalacji HA.
-3. **Zrestartuj Home Assistant.**
+* **Real-time Status:** Szybka aktualizacja stanu rygla i drzwi (Listener) / Near instant lock and door status updates.
+* **Doorbell:** Natychmiastowe powiadomienia o naciśnięciu dzwonka / Immediate doorbell ring notifications.
+* **Event Log:** Sensor "Ostatnie zdarzenie" rozpoznający osoby (zgodnie z użytkownikami stworzonymi w aplikacji EZVIZ) / "Last Event" sensor identifying users (according to users created in the EZVIZ app)
+* **Battery:** Precyzyjny poziom baterii (%) / Accurate battery level monitoring.
+* **Dynamic Icons:** Ikony zmieniające się w zależności od stanu (otwarte/zamknięte) / Animated-ready icons (open/closed states).
 
-## ⚙️ Konfiguracja
-Integracja posiada pełny **Config Flow**, co oznacza brak konieczności edycji plików YAML:
-1. Przejdź do **Ustawienia** -> **Urządzenia oraz usługi**.
-2. Kliknij **Dodaj integrację**.
-3. Wyszukaj na liście **Ezviz DL03 Pro**.
-4. Wypełnij formularz:
-   - **Email/Użytkownik**: Twój login do aplikacji Ezviz.
-   - **Hasło**: Twoje hasło do aplikacji Ezviz.
-   - **Numer Seryjny**: Numer seryjny Twojego zamka (9 cyfr).
-   - **Region**: Domyślnie `eu`.
+---
 
-## 📊 Przykładowa Karta (Lovelace)
-Aby uzyskać wygląd z czerwono-zielonymi statusami, zalecamy użycie karty `tile` lub dodatku `Mushroom Cards`.
+## 🚀 Instalacja / Installation
 
-```yaml
-type: entities
-title: Zamek Wejściowy
-entities:
-  - entity: binary_sensor.ezviz_lock_status
-    name: Stan Rygla
-  - entity: binary_sensor.ezviz_door_status
-    name: Skrzydło Drzwi
-  - entity: sensor.ezviz_battery_level
+### HACS
+1. Otwórz **HACS** w Home Assistant.
+2. Kliknij trzy kropki w prawym górnym rogu i wybierz **Niestandardowe repozytoria (Custom repositories)**.
+3. Wklej link do tego repozytorium: `https://github.com/iwanstudio/ha-ezviz-dl03-pro`.
+4. Wybierz kategorię **Integracja (Integration)**.
+5. Kliknij **Pobierz (Download)**, a następnie zrestartuj Home Assistant.
+
+---
+
+## ⚙️ Konfiguracja / Configuration
+
+Po restarcie przejdź do **Ustawienia -> Urządzenia oraz usługi -> Dodaj integrację** i wyszukaj:
+`Ezviz DL03 Pro Lock`.
+
+Będziesz potrzebować:
+* Email/Login Ezviz
+* Hasło
+* Numer seryjny zamka (Serial Number)
+
+---
+
+## ⚠️ Disclaimer
+[PL] Ten projekt jest nieoficjalny i nie jest powiązany z firmą Ezviz. Używasz go na własną odpowiedzialność.
+[EN] This project is unofficial and not affiliated with Ezviz. Use it at your own risk.
+
+---
+
+## 🛠 Autor / Author
+Stworzone przez **iwanstudio**. Jeśli Ci się podoba, zostaw ⭐!
+Created by **iwanstudio**. If you like it, leave a ⭐!

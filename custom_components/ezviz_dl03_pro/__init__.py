@@ -11,10 +11,7 @@ async def async_setup_entry(hass, entry):
     client = EzvizClient(entry.data["username"], entry.data["password"], entry.data.get("region", "eu"))
     serial_target = entry.data["serial_number"].strip()
     
-    # Przechowujemy flagi pomocnicze
-    coordinator_extra = {
-        "lock_hold": False
-    }
+    coordinator_extra = {"lock_hold": False}
 
     async def async_update_data():
         def fetch():
@@ -23,31 +20,25 @@ async def async_setup_entry(hass, entry):
         
         new_data = await hass.async_add_executor_job(fetch)
         
-        # Bezpieczne sprawdzanie dzwonka i blokady rygla
-        # Używamy getattr, żeby uniknąć AttributeError podczas pierwszego startu
-        doorbell = getattr(coordinator, "doorbell_ringing", False)
-        
-        if doorbell or coordinator_extra["lock_hold"]:
-             _LOGGER.debug("Poller pomija aktualizację rygla/drzwi (aktywne zdarzenie).")
-             if serial_target in coordinator.data and serial_target in new_data:
-                 new_data[serial_target]["STATUS"]["optionals"]["dlLock"] = coordinator.data[serial_target]["STATUS"]["optionals"]["dlLock"]
-                 new_data[serial_target]["STATUS"]["optionals"]["dlDoor"] = coordinator.data[serial_target]["STATUS"]["optionals"]["dlDoor"]
-        
+        # Jeśli trwa blokada po alarmie, nie pozwól pollerowi nadpisać rygla starym statusem z chmury
+        if coordinator_extra["lock_hold"] and serial_target in coordinator.data:
+            _LOGGER.debug("Chmura może mieć opóźnienie - zachowuję stan rygla z alarmu")
+            new_data[serial_target]["STATUS"]["optionals"]["dlLock"] = coordinator.data[serial_target]["STATUS"]["optionals"]["dlLock"]
+            new_data[serial_target]["STATUS"]["optionals"]["dlDoor"] = coordinator.data[serial_target]["STATUS"]["optionals"]["dlDoor"]
+            
         return new_data
 
     coordinator = DataUpdateCoordinator(
         hass, _LOGGER, name="ezviz_dl03_pro",
         update_method=async_update_data,
-        update_interval=timedelta(seconds=5),
+        update_interval=timedelta(seconds=15), # Poller co 15s, żeby nie bić się z listenerem
     )
 
-    # --- KLUCZOWE: Inicjalizacja atrybutów PRZED pierwszym odświeżeniem ---
     coordinator.doorbell_ringing = False
-    coordinator.last_event = "Inicjalizacja..."
+    coordinator.last_event = "Czekam na zdarzenia..."
     coordinator.last_event_id = ""
 
     await coordinator.async_config_entry_first_refresh()
-    
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
     async def fast_listener():
@@ -65,17 +56,18 @@ async def async_setup_entry(hass, entry):
                     msg_text = latest.get("alarmMessage", "")
                     
                     if alarm_id != coordinator.last_event_id:
-                        _LOGGER.info(f"NOWE ZDARZENIE (ID: {alarm_id}): {msg_text}")
+                        _LOGGER.info(f"PRZECHWYCONO ALARM: {msg_text}")
                         coordinator.last_event_id = alarm_id
                         coordinator.last_event = msg_text
                         low_msg = msg_text.lower()
                         
+                        # Włączamy ochronę stanu przed pollerem
                         coordinator_extra["lock_hold"] = True
                         
-                        # LOGIKA RYGLA
+                        # LOGIKA RYGLA (Szybka reakcja na tekst)
                         if "unlock" in low_msg:
                             coordinator.data[serial_target]["STATUS"]["optionals"]["dlLock"] = 1
-                        elif "locked" in low_msg:
+                        elif "lock" in low_msg or "closed" in low_msg:
                             coordinator.data[serial_target]["STATUS"]["optionals"]["dlLock"] = 0
                         
                         # LOGIKA DZWONKA
@@ -85,17 +77,18 @@ async def async_setup_entry(hass, entry):
                             await asyncio.sleep(8)
                             coordinator.doorbell_ringing = False
                         
+                        # KLUCZOWE: Wypychamy dane do wszystkich sensorów
                         coordinator.async_set_updated_data(coordinator.data)
                         
-                        # Czekamy aż chmura się ogarnie po alarmie
-                        await asyncio.sleep(15)
+                        # Czekamy 20s aż chmura "przemieli" status rygla w swoich głównych danych
+                        await asyncio.sleep(20)
                         coordinator_extra["lock_hold"] = False
                 
             except Exception as err:
-                _LOGGER.error("Błąd listenera: %s", err)
+                _LOGGER.error("Błąd Listenera: %s", err)
             
-            await asyncio.sleep(3)
+            await asyncio.sleep(3) # Sprawdzaj alarmy co 3 sekundy
 
-    entry.async_create_background_task(hass, fast_listener(), "ezviz-realtime")
+    entry.async_create_background_task(hass, fast_listener(), "ezviz-pro-listener")
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor"])
     return True

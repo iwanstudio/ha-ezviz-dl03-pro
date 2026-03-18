@@ -13,7 +13,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     ])
 
 class EzvizBatterySensor(CoordinatorEntity, SensorEntity):
-    """Sensor poziomu baterii."""
+    """Sensor baterii."""
     def __init__(self, coordinator, serial):
         super().__init__(coordinator)
         self.serial = serial
@@ -37,7 +37,7 @@ class EzvizBatterySensor(CoordinatorEntity, SensorEntity):
         return None
 
 class EzvizEventSensor(CoordinatorEntity, SensorEntity):
-    """Sensor wyświetlający ostatni komunikat tekstowy z alarmów."""
+    """Sensor wyświetlający ostatni komunikat z alarmu."""
     def __init__(self, coordinator, serial):
         super().__init__(coordinator)
         self.serial = serial

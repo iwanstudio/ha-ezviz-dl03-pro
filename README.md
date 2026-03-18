@@ -18,7 +18,7 @@ Integracja wyciąga z chmury Ezviz dane, które zazwyczaj są ukryte dla standar
 1. Upewnij się, że masz zainstalowany [HACS](https://hacs.xyz/).
 2. W Home Assistant przejdź do **HACS** -> **Integracje**.
 3. Kliknij trzy kropki w prawym górnym rogu i wybierz **Niestandardowe repozytoria** (Custom Repositories).
-4. Wklej URL tego repozytorium: `https://github.com/TWOJA_NAZWA_UZYTKOWNIKA/ha-ezviz-dl03-pro`.
+4. Wklej URL tego repozytorium: `https://github.com/iwanstudio/ha-ezviz-dl03-pro/`.
 5. Jako kategorię wybierz **Integracja**.
 6. Kliknij **Dodaj**, a następnie **Pobierz** w oknie integracji.
 7. **Zrestartuj Home Assistant.**

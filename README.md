@@ -6,11 +6,11 @@
 
 <p align="center">
   <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=iwanstudio&repository=ha-ezviz-dl03-pro&category=integration">
-    <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open HACS Repository" height="32">
+    <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open HACS Repository" height="48">
   </a>
   
   <a href="https://my.home-assistant.io/redirect/config_flow_start/?domain=ezviz_dl03_pro">
-    <img src="https://my.home-assistant.io/badges/config_flow_start.svg" alt="Add Integration" height="32">
+    <img src="https://my.home-assistant.io/badges/config_flow_start.svg" alt="Add Integration" height="48">
   </a>
 </p>
 

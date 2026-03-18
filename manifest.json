@@ -1,0 +1,10 @@
+{
+  "domain": "ezviz_dl03",
+  "name": "Ezviz DL03 Pro Lock",
+  "documentation": "https://github.com/TwojUser/ha-ezviz-dl03-pro",
+  "dependencies": [],
+  "codeowners": ["@TwojUser"],
+  "requirements": ["pyezvizapi==0.2.1.2"],
+  "version": "1.0.0",
+  "iot_class": "cloud_polling"
+}

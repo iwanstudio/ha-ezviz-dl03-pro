@@ -11,6 +11,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
         EzvizBatterySensor(coordinator, serial),
         EzvizEventSensor(coordinator, serial),
         EzvizWifiSignalSensor(coordinator, serial),
+        EzvizWifiSSIDSensor(coordinator, serial),
+        EzvizIPAddressSensor(coordinator, serial),
         EzvizErrorCountSensor(coordinator, serial)
     ])
 
@@ -63,8 +65,31 @@ class EzvizWifiSignalSensor(EzvizBaseSensor):
 
     @property
     def native_value(self):
-        # Pobieranie sygnału z sekcji WIFI (wartość 58 z Twojego testu)
         return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("signal")
+
+class EzvizWifiSSIDSensor(EzvizBaseSensor):
+    def __init__(self, coordinator, serial):
+        super().__init__(coordinator, serial)
+        self._attr_name = "Ezviz Sieć Wi-Fi"
+        self._attr_icon = "mdi:wifi-cog"
+        self._attr_unique_id = f"{serial}_wifi_ssid"
+
+    @property
+    def native_value(self):
+        # Pobieranie SSID (np. Tenda_O3)
+        return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("ssid")
+
+class EzvizIPAddressSensor(EzvizBaseSensor):
+    def __init__(self, coordinator, serial):
+        super().__init__(coordinator, serial)
+        self._attr_name = "Ezviz Adres IP"
+        self._attr_icon = "mdi:ip-network"
+        self._attr_unique_id = f"{serial}_ip_address"
+
+    @property
+    def native_value(self):
+        # Pobieranie adresu IP urządzenia
+        return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("address")
 
 class EzvizErrorCountSensor(EzvizBaseSensor):
     def __init__(self, coordinator, serial):
@@ -75,6 +100,5 @@ class EzvizErrorCountSensor(EzvizBaseSensor):
 
     @property
     def native_value(self):
-        # Ścieżka: FEATURE_INFO -> 0 -> DoorLock -> DoorLockMgr -> TryErrLock -> errCount
         feat = self.coordinator.data.get(self.serial, {}).get("FEATURE_INFO", {}).get("0", {})
         return feat.get("DoorLock", {}).get("DoorLockMgr", {}).get("TryErrLock", {}).get("errCount", 0)

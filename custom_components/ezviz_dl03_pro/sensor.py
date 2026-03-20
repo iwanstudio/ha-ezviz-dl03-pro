@@ -1,4 +1,4 @@
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
+from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo
 from .const import DOMAIN
@@ -6,97 +6,35 @@ from .const import DOMAIN
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
     serial = entry.data["serial_number"]
-    
-    async_add_entities([
-        EzvizBatterySensor(coordinator, serial),
-        EzvizEventSensor(coordinator, serial),
-        EzvizWifiSignalSensor(coordinator, serial),
-        EzvizWifiSSIDSensor(coordinator, serial),
-        EzvizIPAddressSensor(coordinator, serial),
-        EzvizErrorCountSensor(coordinator, serial)
-    ])
+    async_add_entities([EzvizPrivacySwitch(coordinator, serial)])
 
-class EzvizBaseSensor(CoordinatorEntity, SensorEntity):
-    """Baza dla wszystkich sensorów zamka."""
+class EzvizPrivacySwitch(CoordinatorEntity, SwitchEntity):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator)
         self.serial = serial
+        self._attr_name = "Ezviz Przełącznik Trybu Prywatnego"
+        self._attr_icon = "mdi:shield-lock"
+        self._attr_unique_id = f"{serial}_privacy_switch"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, serial)},
-            name=f"Zamek DL03 Pro ({serial})",
-            manufacturer="Ezviz",
-            model="DL03 Pro"
+            name=f"Zamek DL03 Pro ({serial})"
         )
 
-class EzvizBatterySensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Bateria"
-        self._attr_device_class = SensorDeviceClass.BATTERY
-        self._attr_native_unit_of_measurement = "%"
-        self._attr_unique_id = f"{serial}_battery"
-
     @property
-    def native_value(self):
-        data = self.coordinator.data.get(self.serial, {})
-        power = data.get("STATUS", {}).get("optionals", {}).get("multiPower", [])
-        if power and len(power) > 0:
-            return power[0].get("Remaining")
-        return None
-
-class EzvizEventSensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Ostatnie Zdarzenie"
-        self._attr_icon = "mdi:history"
-        self._attr_unique_id = f"{serial}_last_event"
-
-    @property
-    def native_value(self):
-        return getattr(self.coordinator, "last_event", "Brak danych")
-
-class EzvizWifiSignalSensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Sygnał Wi-Fi"
-        self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
-        self._attr_native_unit_of_measurement = "%"
-        self._attr_unique_id = f"{serial}_wifi_signal"
-
-    @property
-    def native_value(self):
-        return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("signal")
-
-class EzvizWifiSSIDSensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Sieć Wi-Fi"
-        self._attr_icon = "mdi:wifi-cog"
-        self._attr_unique_id = f"{serial}_wifi_ssid"
-
-    @property
-    def native_value(self):
-        return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("ssid")
-
-class EzvizIPAddressSensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Adres IP"
-        self._attr_icon = "mdi:ip-network"
-        self._attr_unique_id = f"{serial}_ip_address"
-
-    @property
-    def native_value(self):
-        return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("address")
-
-class EzvizErrorCountSensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Błędne Próby"
-        self._attr_icon = "mdi:lock-alert" # POPRAWIONA IKONA (Wykrzyknik przy kłódce)
-        self._attr_unique_id = f"{serial}_error_count"
-
-    @property
-    def native_value(self):
+    def is_on(self):
         feat = self.coordinator.data.get(self.serial, {}).get("FEATURE_INFO", {}).get("0", {})
-        return feat.get("DoorLock", {}).get("DoorLockMgr", {}).get("TryErrLock", {}).get("errCount", 0)
+        mgr = feat.get("DoorLock", {}).get("DoorLockMgr", {})
+        return mgr.get("PrivacyModeStatus", {}).get("status") is True or mgr.get("PrivacyMode", {}).get("enabled") is True
+
+    async def async_turn_on(self, **kwargs):
+        # Typ 30 = Privacy Mode w Ezviz DL03
+        await self.hass.async_add_executor_job(
+            self.coordinator.ezviz_client.switch_device_status, self.serial, 30, True
+        )
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs):
+        await self.hass.async_add_executor_job(
+            self.coordinator.ezviz_client.switch_device_status, self.serial, 30, False
+        )
+        await self.coordinator.async_request_refresh()

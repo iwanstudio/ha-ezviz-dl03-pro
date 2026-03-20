@@ -19,7 +19,9 @@ class EzvizBaseBinary(CoordinatorEntity, BinarySensorEntity):
         self.serial = serial
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, serial)},
-            name=f"Zamek DL03 Pro ({serial})"
+            name=f"Zamek DL03 Pro ({serial})",
+            manufacturer="Ezviz",
+            model="DL03 Pro"
         )
 
 class EzvizLockBinarySensor(EzvizBaseBinary):
@@ -32,6 +34,7 @@ class EzvizLockBinarySensor(EzvizBaseBinary):
     @property
     def is_on(self):
         data = self.coordinator.data.get(self.serial, {})
+        # 1 = Unlocked
         return data.get("STATUS", {}).get("optionals", {}).get("dlLock") == 1
 
 class EzvizDoorBinarySensor(EzvizBaseBinary):
@@ -44,6 +47,7 @@ class EzvizDoorBinarySensor(EzvizBaseBinary):
     @property
     def is_on(self):
         data = self.coordinator.data.get(self.serial, {})
+        # 1 = Open
         return data.get("STATUS", {}).get("optionals", {}).get("dlDoor") == 1
 
 class EzvizBellBinarySensor(EzvizBaseBinary):

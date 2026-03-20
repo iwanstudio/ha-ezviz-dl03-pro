@@ -9,7 +9,6 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    # Pobieramy dane (login może być pod kluczem username lub email)
     username = entry.data.get("username") or entry.data.get("email")
     password = entry.data.get("password")
     serial = entry.data.get("serial_number")
@@ -26,8 +25,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
-    # Ważne: ładujemy platformy po kolei
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor", "switch"])
+    # Ładujemy tylko sensory i binary_sensory
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor"])
     return True
 
 class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
@@ -49,7 +48,6 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
                 m_text = m.get("alarmMessage", "")
                 self.doorbell_ringing = (m_type == 10000 or "doorbell" in m_text.lower())
                 
-                # Prosta logika osób
                 if "unlock" in m_text.lower():
                     if "martyna" in m_text.lower(): self.last_event = "Martyna"
                     elif "piotrek" in m_text.lower(): self.last_event = "Piotrek"

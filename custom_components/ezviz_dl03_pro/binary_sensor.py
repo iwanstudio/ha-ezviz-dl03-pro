@@ -34,12 +34,10 @@ class EzvizLockBinarySensor(EzvizBaseBinary):
 
     @property
     def is_on(self):
+        # DL03 Pro raportuje 0 jako OTWARTY (Unlocked)
         data = self.coordinator.data.get(self.serial, {})
-        return data.get("STATUS", {}).get("optionals", {}).get("dlLock") == 1
-
-    @property
-    def icon(self):
-        return "mdi:lock-open-variant" if self.is_on else "mdi:lock"
+        val = data.get("STATUS", {}).get("optionals", {}).get("dlLock")
+        return val == 0
 
 class EzvizDoorBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
@@ -50,12 +48,10 @@ class EzvizDoorBinarySensor(EzvizBaseBinary):
 
     @property
     def is_on(self):
+        # DL03 Pro raportuje 0 jako OTWARTE
         data = self.coordinator.data.get(self.serial, {})
-        return data.get("STATUS", {}).get("optionals", {}).get("dlDoor") == 1
-
-    @property
-    def icon(self):
-        return "mdi:door-open" if self.is_on else "mdi:door-closed"
+        val = data.get("STATUS", {}).get("optionals", {}).get("dlDoor")
+        return val == 0
 
 class EzvizBellBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
@@ -68,10 +64,6 @@ class EzvizBellBinarySensor(EzvizBaseBinary):
     def is_on(self):
         return getattr(self.coordinator, "doorbell_ringing", False)
 
-    @property
-    def icon(self):
-        return "mdi:bell-ring" if self.is_on else "mdi:bell-outline"
-
 class EzvizPrivacyBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
@@ -81,11 +73,8 @@ class EzvizPrivacyBinarySensor(EzvizBaseBinary):
 
     @property
     def is_on(self):
-        # Ścieżka: FEATURE_INFO -> 0 -> DoorLock -> DoorLockMgr -> PrivacyModeStatus -> status
         feat = self.coordinator.data.get(self.serial, {}).get("FEATURE_INFO", {}).get("0", {})
-        status = feat.get("DoorLock", {}).get("DoorLockMgr", {}).get("PrivacyModeStatus", {}).get("status")
-        return status is True
-
-    @property
-    def icon(self):
-        return "mdi:shield-lock" if self.is_on else "mdi:shield-off-outline"
+        mgr = feat.get("DoorLock", {}).get("DoorLockMgr", {})
+        status_field = mgr.get("PrivacyModeStatus", {}).get("status")
+        enabled_field = mgr.get("PrivacyMode", {}).get("enabled")
+        return (status_field is True) or (enabled_field is True)

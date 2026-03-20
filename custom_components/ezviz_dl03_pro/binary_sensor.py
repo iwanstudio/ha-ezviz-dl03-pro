@@ -9,25 +9,27 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([
         EzvizLockBin(coordinator, serial),
         EzvizDoorBin(coordinator, serial),
-        EzvizBellBin(coordinator, serial),
-        EzvizPrivBin(coordinator, serial)
+        EzvizBellBin(coordinator, serial)
     ])
 
-class EzvizLockBin(CoordinatorEntity, BinarySensorEntity):
+class EzvizBaseBinary(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator)
         self.serial = serial
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, serial)}, name=f"Zamek DL03 Pro ({serial})")
+
+class EzvizLockBin(EzvizBaseBinary):
+    def __init__(self, coordinator, serial):
+        super().__init__(coordinator, serial)
         self._attr_name = "Zamek"
         self._attr_device_class = BinarySensorDeviceClass.LOCK
         self._attr_unique_id = f"{serial}_lock"
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, serial)}, name=f"Zamek DL03 Pro ({serial})")
 
     @property
     def is_on(self):
-        # 0 = Odblokowany
         return self.coordinator.data.get(self.serial, {}).get("STATUS", {}).get("optionals", {}).get("dlLock") == 0
 
-class EzvizDoorBin(EzvizLockBin):
+class EzvizDoorBin(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
         self._attr_name = "Drzwi"
@@ -38,7 +40,7 @@ class EzvizDoorBin(EzvizLockBin):
     def is_on(self):
         return self.coordinator.data.get(self.serial, {}).get("STATUS", {}).get("optionals", {}).get("dlDoor") == 0
 
-class EzvizBellBin(EzvizLockBin):
+class EzvizBellBin(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
         self._attr_name = "Dzwonek"
@@ -48,16 +50,3 @@ class EzvizBellBin(EzvizLockBin):
     @property
     def is_on(self):
         return self.coordinator.doorbell_ringing
-
-class EzvizPrivBin(EzvizLockBin):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Tryb prywatny"
-        self._attr_unique_id = f"{serial}_priv_bin"
-        # Usunęliśmy Connectivity, żeby był zwykły On/Off
-
-    @property
-    def is_on(self):
-        feat = self.coordinator.data.get(self.serial, {}).get("FEATURE_INFO", {}).get("0", {})
-        mgr = feat.get("DoorLock", {}).get("DoorLockMgr", {})
-        return mgr.get("PrivacyModeStatus", {}).get("status") is True or mgr.get("PrivacyMode", {}).get("enabled") is True

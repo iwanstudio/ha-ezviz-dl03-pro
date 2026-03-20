@@ -27,7 +27,10 @@ class EzvizLockBin(EzvizBaseBinary):
 
     @property
     def is_on(self):
-        return self.coordinator.data.get(self.serial, {}).get("STATUS", {}).get("optionals", {}).get("dlLock") == 0
+        # 1 = Odblokowany/Otwarty (On)
+        # 0 = Zablokowany (Off)
+        val = self.coordinator.data.get(self.serial, {}).get("STATUS", {}).get("optionals", {}).get("dlLock")
+        return val == 1
 
 class EzvizDoorBin(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
@@ -38,7 +41,9 @@ class EzvizDoorBin(EzvizBaseBinary):
 
     @property
     def is_on(self):
-        return self.coordinator.data.get(self.serial, {}).get("STATUS", {}).get("optionals", {}).get("dlDoor") == 0
+        # 1 = Otwarte (On)
+        val = self.coordinator.data.get(self.serial, {}).get("STATUS", {}).get("optionals", {}).get("dlDoor")
+        return val == 1
 
 class EzvizBellBin(EzvizBaseBinary):
     def __init__(self, coordinator, serial):

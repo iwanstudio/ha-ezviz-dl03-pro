@@ -9,7 +9,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([
         EzvizBatterySensor(coordinator, serial),
         EzvizEventSensor(coordinator, serial),
-        EzvizWifiSensor(coordinator, serial),
+        EzvizWifiSignalSensor(coordinator, serial),
+        EzvizWifiSSIDSensor(coordinator, serial),
         EzvizIPSensor(coordinator, serial),
         EzvizErrorSensor(coordinator, serial)
     ])
@@ -44,16 +45,27 @@ class EzvizEventSensor(EzvizBaseSensor):
     def native_value(self):
         return self.coordinator.last_event
 
-class EzvizWifiSensor(EzvizBaseSensor):
+class EzvizWifiSignalSensor(EzvizBaseSensor):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
         self._attr_name = "Sygnał Wi-Fi"
         self._attr_native_unit_of_measurement = "%"
-        self._attr_unique_id = f"{serial}_wifi"
+        self._attr_unique_id = f"{serial}_wifi_signal"
 
     @property
     def native_value(self):
         return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("signal")
+
+class EzvizWifiSSIDSensor(EzvizBaseSensor):
+    def __init__(self, coordinator, serial):
+        super().__init__(coordinator, serial)
+        self._attr_name = "Sieć Wi-Fi"
+        self._attr_icon = "mdi:wifi-settings"
+        self._attr_unique_id = f"{serial}_wifi_ssid"
+
+    @property
+    def native_value(self):
+        return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("ssid")
 
 class EzvizIPSensor(EzvizBaseSensor):
     def __init__(self, coordinator, serial):

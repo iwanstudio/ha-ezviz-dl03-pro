@@ -9,6 +9,7 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    # Pobieramy login (username lub email)
     username = entry.data.get("username") or entry.data.get("email")
     password = entry.data.get("password")
     serial = entry.data.get("serial_number")
@@ -21,17 +22,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         return False
 
     coordinator = EzvizDataUpdateCoordinator(hass, client, serial)
+    
+    # Czekamy na pierwszy odczyt, żeby encje nie były "Unknown" na starcie
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
-    # Ładujemy tylko sensory i binary_sensory
+    # Rejestrujemy tylko sensory i binary_sensory (bez switcha)
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor"])
     return True
 
 class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, client, serial):
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=30))
+        super().__init__(
+            hass, 
+            _LOGGER, 
+            name=DOMAIN, 
+            # POWRÓT DO 2 SEKUND: Maksymalna szybkość odświeżania
+            update_interval=timedelta(seconds=2)
+        )
         self.ezviz_client = client
         self.serial = serial
         self.last_event = "Brak danych"
@@ -39,22 +48,32 @@ class EzvizDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         try:
+            # Pobieramy dane diagnostyczne i listę ostatnich zdarzeń
             data = await self.hass.async_add_executor_job(self.ezviz_client.get_device_infos)
-            msgs = await self.hass.async_add_executor_job(self.ezviz_client.get_device_messages_list, self.serial, 1, 5)
+            msgs = await self.hass.async_add_executor_job(
+                self.ezviz_client.get_device_messages_list, self.serial, 1, 5
+            )
             
             if msgs and isinstance(msgs, list) and len(msgs) > 0:
                 m = msgs[0]
                 m_type = m.get("alarmType", 0)
                 m_text = m.get("alarmMessage", "")
+                
+                # Detekcja dzwonka
                 self.doorbell_ringing = (m_type == 10000 or "doorbell" in m_text.lower())
                 
+                # Kto otworzył?
                 if "unlock" in m_text.lower():
-                    if "martyna" in m_text.lower(): self.last_event = "Martyna"
-                    elif "piotrek" in m_text.lower(): self.last_event = "Piotrek"
-                    else: self.last_event = "Otwarto"
+                    if "martyna" in m_text.lower():
+                        self.last_event = "Martyna"
+                    elif "piotrek" in m_text.lower():
+                        self.last_event = "Piotrek"
+                    else:
+                        self.last_event = "Otwarto"
                 else:
                     self.last_event = m_text
+
             return data
         except Exception as e:
-            _LOGGER.error(f"Błąd pobierania danych: {e}")
+            _LOGGER.error(f"Błąd aktualizacji (2s): {e}")
             return self.data

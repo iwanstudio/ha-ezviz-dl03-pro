@@ -5,14 +5,15 @@ from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    serial = entry.data.get("serial_number")
+    serial = entry.data["serial_number"]
+    
     async_add_entities([
         EzvizBatterySensor(coordinator, serial),
         EzvizEventSensor(coordinator, serial),
         EzvizWifiSignalSensor(coordinator, serial),
         EzvizWifiSSIDSensor(coordinator, serial),
-        EzvizIPSensor(coordinator, serial),
-        EzvizErrorSensor(coordinator, serial)
+        EzvizIPAddressSensor(coordinator, serial),
+        EzvizErrorCountSensor(coordinator, serial)
     ])
 
 class EzvizBaseSensor(CoordinatorEntity, SensorEntity):
@@ -24,31 +25,33 @@ class EzvizBaseSensor(CoordinatorEntity, SensorEntity):
 class EzvizBatterySensor(EzvizBaseSensor):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
-        self._attr_name = "Bateria"
+        self._attr_name = "Ezviz Bateria"
         self._attr_device_class = SensorDeviceClass.BATTERY
         self._attr_native_unit_of_measurement = "%"
-        self._attr_unique_id = f"{serial}_batt"
+        self._attr_unique_id = f"{serial}_battery"
 
     @property
     def native_value(self):
-        d = self.coordinator.data.get(self.serial, {}).get("STATUS", {}).get("optionals", {}).get("multiPower", [])
-        return d[0].get("Remaining") if d else None
+        data = self.coordinator.data.get(self.serial, {})
+        power = data.get("STATUS", {}).get("optionals", {}).get("multiPower", [])
+        return power[0].get("Remaining") if power else None
 
 class EzvizEventSensor(EzvizBaseSensor):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
-        self._attr_name = "Ostatnie Zdarzenie"
+        self._attr_name = "Ezviz Ostatnie Zdarzenie"
         self._attr_icon = "mdi:history"
-        self._attr_unique_id = f"{serial}_event"
+        self._attr_unique_id = f"{serial}_last_event"
 
     @property
     def native_value(self):
-        return self.coordinator.last_event
+        return getattr(self.coordinator, "last_event", "Brak danych")
 
 class EzvizWifiSignalSensor(EzvizBaseSensor):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
-        self._attr_name = "Sygnał Wi-Fi"
+        self._attr_name = "Ezviz Sygnał Wi-Fi"
+        self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
         self._attr_native_unit_of_measurement = "%"
         self._attr_unique_id = f"{serial}_wifi_signal"
 
@@ -59,31 +62,31 @@ class EzvizWifiSignalSensor(EzvizBaseSensor):
 class EzvizWifiSSIDSensor(EzvizBaseSensor):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
-        self._attr_name = "Sieć Wi-Fi"
-        self._attr_icon = "mdi:wifi-settings"
+        self._attr_name = "Ezviz Sieć Wi-Fi"
+        self._attr_icon = "mdi:wifi-cog"
         self._attr_unique_id = f"{serial}_wifi_ssid"
 
     @property
     def native_value(self):
         return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("ssid")
 
-class EzvizIPSensor(EzvizBaseSensor):
+class EzvizIPAddressSensor(EzvizBaseSensor):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
-        self._attr_name = "Adres IP"
+        self._attr_name = "Ezviz Adres IP"
         self._attr_icon = "mdi:ip-network"
-        self._attr_unique_id = f"{serial}_ip"
+        self._attr_unique_id = f"{serial}_ip_address"
 
     @property
     def native_value(self):
         return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("address")
 
-class EzvizErrorSensor(EzvizBaseSensor):
+class EzvizErrorCountSensor(EzvizBaseSensor):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
-        self._attr_name = "Błędne próby"
-        self._attr_icon = "mdi:lock-alert"
-        self._attr_unique_id = f"{serial}_err"
+        self._attr_name = "Ezviz Błędne Próby"
+        self._attr_icon = "mdi:alert-lock"
+        self._attr_unique_id = f"{serial}_error_count"
 
     @property
     def native_value(self):

@@ -5,53 +5,54 @@ from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    serial = entry.data.get("serial_number")
+    serial = entry.data["serial_number"]
+    
     async_add_entities([
-        EzvizLockBin(coordinator, serial),
-        EzvizDoorBin(coordinator, serial),
-        EzvizBellBin(coordinator, serial)
+        EzvizLockBinarySensor(coordinator, serial),
+        EzvizDoorBinarySensor(coordinator, serial),
+        EzvizBellBinarySensor(coordinator, serial)
     ])
 
 class EzvizBaseBinary(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator)
         self.serial = serial
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, serial)}, name=f"Zamek DL03 Pro ({serial})")
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, serial)},
+            name=f"Zamek DL03 Pro ({serial})"
+        )
 
-class EzvizLockBin(EzvizBaseBinary):
+class EzvizLockBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
-        self._attr_name = "Zamek"
+        self._attr_name = "Ezviz Zamek"
         self._attr_device_class = BinarySensorDeviceClass.LOCK
-        self._attr_unique_id = f"{serial}_lock"
+        self._attr_unique_id = f"{serial}_lock_status"
 
     @property
     def is_on(self):
-        # 1 = Odblokowany/Otwarty (On)
-        # 0 = Zablokowany (Off)
-        val = self.coordinator.data.get(self.serial, {}).get("STATUS", {}).get("optionals", {}).get("dlLock")
-        return val == 1
+        data = self.coordinator.data.get(self.serial, {})
+        return data.get("STATUS", {}).get("optionals", {}).get("dlLock") == 1
 
-class EzvizDoorBin(EzvizBaseBinary):
+class EzvizDoorBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
-        self._attr_name = "Drzwi"
+        self._attr_name = "Ezviz Drzwi"
         self._attr_device_class = BinarySensorDeviceClass.DOOR
-        self._attr_unique_id = f"{serial}_door"
+        self._attr_unique_id = f"{serial}_door_status"
 
     @property
     def is_on(self):
-        # 1 = Otwarte (On)
-        val = self.coordinator.data.get(self.serial, {}).get("STATUS", {}).get("optionals", {}).get("dlDoor")
-        return val == 1
+        data = self.coordinator.data.get(self.serial, {})
+        return data.get("STATUS", {}).get("optionals", {}).get("dlDoor") == 1
 
-class EzvizBellBin(EzvizBaseBinary):
+class EzvizBellBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator, serial)
-        self._attr_name = "Dzwonek"
+        self._attr_name = "Ezviz Dzwonek"
         self._attr_device_class = BinarySensorDeviceClass.SOUND
-        self._attr_unique_id = f"{serial}_bell"
+        self._attr_unique_id = f"{serial}_bell_status"
 
     @property
     def is_on(self):
-        return self.coordinator.doorbell_ringing
+        return getattr(self.coordinator, "doorbell_ringing", False)

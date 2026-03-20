@@ -5,7 +5,7 @@ from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    serial = entry.data["serial_number"]
+    serial = entry.data.get("serial_number")
     
     async_add_entities([
         EzvizLockBinarySensor(coordinator, serial),
@@ -20,9 +20,7 @@ class EzvizBaseBinary(CoordinatorEntity, BinarySensorEntity):
         self.serial = serial
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, serial)},
-            name=f"Zamek DL03 Pro ({serial})",
-            manufacturer="Ezviz",
-            model="DL03 Pro"
+            name=f"Zamek DL03 Pro ({serial})"
         )
 
 class EzvizLockBinarySensor(EzvizBaseBinary):
@@ -34,10 +32,9 @@ class EzvizLockBinarySensor(EzvizBaseBinary):
 
     @property
     def is_on(self):
-        # DL03 Pro raportuje 0 jako OTWARTY (Unlocked)
         data = self.coordinator.data.get(self.serial, {})
-        val = data.get("STATUS", {}).get("optionals", {}).get("dlLock")
-        return val == 0
+        # 0 oznacza odblokowany rygiel
+        return data.get("STATUS", {}).get("optionals", {}).get("dlLock") == 0
 
 class EzvizDoorBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
@@ -48,10 +45,9 @@ class EzvizDoorBinarySensor(EzvizBaseBinary):
 
     @property
     def is_on(self):
-        # DL03 Pro raportuje 0 jako OTWARTE
+        # 0 oznacza otwarte drzwi
         data = self.coordinator.data.get(self.serial, {})
-        val = data.get("STATUS", {}).get("optionals", {}).get("dlDoor")
-        return val == 0
+        return data.get("STATUS", {}).get("optionals", {}).get("dlDoor") == 0
 
 class EzvizBellBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
@@ -75,6 +71,4 @@ class EzvizPrivacyBinarySensor(EzvizBaseBinary):
     def is_on(self):
         feat = self.coordinator.data.get(self.serial, {}).get("FEATURE_INFO", {}).get("0", {})
         mgr = feat.get("DoorLock", {}).get("DoorLockMgr", {})
-        status_field = mgr.get("PrivacyModeStatus", {}).get("status")
-        enabled_field = mgr.get("PrivacyMode", {}).get("enabled")
-        return (status_field is True) or (enabled_field is True)
+        return mgr.get("PrivacyModeStatus", {}).get("status") is True or mgr.get("PrivacyMode", {}).get("enabled") is True

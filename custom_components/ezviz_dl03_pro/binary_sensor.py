@@ -6,7 +6,6 @@ from .const import DOMAIN
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
     serial = entry.data["serial_number"]
-    
     async_add_entities([
         EzvizLockBinarySensor(coordinator, serial),
         EzvizDoorBinarySensor(coordinator, serial),
@@ -17,12 +16,7 @@ class EzvizBaseBinary(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator)
         self.serial = serial
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, serial)},
-            name=f"Zamek DL03 Pro ({serial})",
-            manufacturer="Ezviz",
-            model="DL03 Pro"
-        )
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, serial)}, name=f"Zamek DL03 Pro ({serial})")
 
 class EzvizLockBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
@@ -34,7 +28,7 @@ class EzvizLockBinarySensor(EzvizBaseBinary):
     @property
     def is_on(self):
         data = self.coordinator.data.get(self.serial, {})
-        # 1 = Unlocked
+        # 1 = Unlocked (On), 0 = Locked (Off)
         return data.get("STATUS", {}).get("optionals", {}).get("dlLock") == 1
 
 class EzvizDoorBinarySensor(EzvizBaseBinary):
@@ -47,7 +41,7 @@ class EzvizDoorBinarySensor(EzvizBaseBinary):
     @property
     def is_on(self):
         data = self.coordinator.data.get(self.serial, {})
-        # 1 = Open
+        # 1 = Open (On), 0 = Closed (Off)
         return data.get("STATUS", {}).get("optionals", {}).get("dlDoor") == 1
 
 class EzvizBellBinarySensor(EzvizBaseBinary):

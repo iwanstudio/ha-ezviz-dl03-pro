@@ -6,7 +6,6 @@ from .const import DOMAIN
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
     serial = entry.data["serial_number"]
-    
     async_add_entities([
         EzvizLockBinarySensor(coordinator, serial),
         EzvizDoorBinarySensor(coordinator, serial),

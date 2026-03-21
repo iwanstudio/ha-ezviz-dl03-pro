@@ -33,9 +33,8 @@ class EzvizLockBinarySensor(EzvizBaseBinary):
 
     @property
     def is_on(self):
-        data = self.coordinator.data.get(self.serial, {})
-        # KLUCZOWA ZMIANA: Ezviz przesyła 0 jako ODBLOKOWANY
-        return data.get("STATUS", {}).get("optionals", {}).get("dlLock") == 0
+        # KONIEC KŁAMSTW EZVIZA: Czytamy wyłącznie naszą własną, wyliczoną zmienną z historii
+        return getattr(self.coordinator, "lock_state", 0) == 1
 
 class EzvizDoorBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
@@ -46,8 +45,8 @@ class EzvizDoorBinarySensor(EzvizBaseBinary):
 
     @property
     def is_on(self):
+        # Drzwi działają w API poprawnie, więc czytamy z danych (1 = Otwarte)
         data = self.coordinator.data.get(self.serial, {})
-        # 1 to otwarte drzwi
         return data.get("STATUS", {}).get("optionals", {}).get("dlDoor") == 1
 
 class EzvizBellBinarySensor(EzvizBaseBinary):

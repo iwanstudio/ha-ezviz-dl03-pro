@@ -6,6 +6,7 @@ from .const import DOMAIN
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
     serial = entry.data["serial_number"]
+    
     async_add_entities([
         EzvizLockBinarySensor(coordinator, serial),
         EzvizDoorBinarySensor(coordinator, serial),
@@ -33,7 +34,8 @@ class EzvizLockBinarySensor(EzvizBaseBinary):
     @property
     def is_on(self):
         data = self.coordinator.data.get(self.serial, {})
-        return data.get("STATUS", {}).get("optionals", {}).get("dlLock") == 1
+        # KLUCZOWA ZMIANA: Ezviz przesyła 0 jako ODBLOKOWANY
+        return data.get("STATUS", {}).get("optionals", {}).get("dlLock") == 0
 
 class EzvizDoorBinarySensor(EzvizBaseBinary):
     def __init__(self, coordinator, serial):
@@ -45,6 +47,7 @@ class EzvizDoorBinarySensor(EzvizBaseBinary):
     @property
     def is_on(self):
         data = self.coordinator.data.get(self.serial, {})
+        # 1 to otwarte drzwi
         return data.get("STATUS", {}).get("optionals", {}).get("dlDoor") == 1
 
 class EzvizBellBinarySensor(EzvizBaseBinary):

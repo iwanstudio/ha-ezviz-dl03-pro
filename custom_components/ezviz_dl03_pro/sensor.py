@@ -40,7 +40,7 @@ class EzvizEventSensor(EzvizBaseSensor):
         super().__init__(coordinator, serial)
         self._attr_name = "Ezviz Ostatnie Zdarzenie"
         self._attr_icon = "mdi:history"
-        self._attr_unique_id = f"{serial}_last_event"
+        self._attr_unique_id = f"{serial}_event" # PRZYWRÓCONO ID Z 2.9.0
 
     @property
     def native_value(self):

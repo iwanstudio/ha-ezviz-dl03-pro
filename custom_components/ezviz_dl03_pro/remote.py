@@ -59,6 +59,35 @@ def _response_code(payload: Any) -> Any:
     return payload.get("resultCode", payload.get("status"))
 
 
+def _error_detail(err: Exception) -> str:
+    """Describe an error, including the HTTP status and EZVIZ code/message.
+
+    pyezvizapi raises HTTPError without a message; the real reason is in the
+    wrapped requests response.
+    """
+    response = getattr(err.__cause__, "response", None) or getattr(err, "response", None)
+    if response is None:
+        return str(err) or type(err).__name__
+    parts = [f"HTTP {response.status_code}"]
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict):
+        code = _response_code(body)
+        meta = body.get("meta") if isinstance(body.get("meta"), dict) else {}
+        message = meta.get("message") or body.get("resultDes") or body.get("message")
+        if code is not None:
+            parts.append(f"code {code}")
+        if message:
+            parts.append(str(message))
+    else:
+        text = (response.text or "").strip()
+        if text:
+            parts.append(text[:200])
+    return ", ".join(parts)
+
+
 def _is_ok(payload: Any) -> bool:
     code = _response_code(payload)
     return code in (200, "200", 0, "0")
@@ -97,8 +126,11 @@ def send_lock_command(
                     "PUT", path, json_body=payload, retry_401=True, max_retries=0
                 )
             except PyEzvizError as err:
-                failures.append(f"{resource}/{index}/lock{lock_no}: {err}")
-                _LOGGER.debug("Remote %s failed via %s: %s", endpoint, path, err)
+                detail = _error_detail(err)
+                failures.append(f"{resource}/{index}/lock{lock_no}: {detail}")
+                _LOGGER.debug(
+                    "Remote %s failed via %s lockNo=%s: %s", endpoint, path, lock_no, detail
+                )
                 continue
             _LOGGER.debug(
                 "Remote %s via %s lockNo=%s -> %s", endpoint, path, lock_no, result

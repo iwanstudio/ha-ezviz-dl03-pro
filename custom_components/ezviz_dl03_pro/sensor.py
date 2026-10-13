@@ -1,92 +1,144 @@
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.entity import DeviceInfo
-from .const import DOMAIN
+"""Sensors for the Ezviz DL03 Pro lock."""
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    serial = entry.data["serial_number"]
-    async_add_entities([
-        EzvizBatterySensor(coordinator, serial),
-        EzvizEventSensor(coordinator, serial),
-        EzvizWifiSignalSensor(coordinator, serial),
-        EzvizWifiSSIDSensor(coordinator, serial),
-        EzvizIPAddressSensor(coordinator, serial),
-        EzvizErrorCountSensor(coordinator, serial)
-    ])
+from __future__ import annotations
 
-class EzvizBaseSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator)
-        self.serial = serial
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, serial)}, name=f"Zamek DL03 Pro ({serial})")
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
-class EzvizBatterySensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Bateria"
-        self._attr_device_class = SensorDeviceClass.BATTERY
-        self._attr_native_unit_of_measurement = "%"
-        self._attr_unique_id = f"{serial}_battery"
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.const import PERCENTAGE, EntityCategory
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+
+from .coordinator import EzvizDL03ConfigEntry, EzvizDL03Coordinator
+from .entity import EzvizDL03Entity
+
+
+def _battery(data: dict[str, Any]) -> Any:
+    power = ((data.get("STATUS") or {}).get("optionals") or {}).get("multiPower")
+    if isinstance(power, list) and power and isinstance(power[0], dict):
+        return power[0].get("Remaining")
+    return None
+
+
+def _wifi(key: str) -> Callable[[dict[str, Any]], Any]:
+    return lambda data: (data.get("WIFI") or {}).get(key)
+
+
+def _error_count(data: dict[str, Any]) -> Any:
+    feature = (data.get("FEATURE_INFO") or {}).get("0") or {}
+    return (
+        feature.get("DoorLock", {})
+        .get("DoorLockMgr", {})
+        .get("TryErrLock", {})
+        .get("errCount")
+    )
+
+
+@dataclass(frozen=True, kw_only=True)
+class EzvizSensorDescription(SensorEntityDescription):
+    """Describes a status sensor."""
+
+    value_fn: Callable[[dict[str, Any]], Any]
+
+
+SENSORS: tuple[EzvizSensorDescription, ...] = (
+    EzvizSensorDescription(
+        key="battery",
+        device_class=SensorDeviceClass.BATTERY,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_battery,
+    ),
+    EzvizSensorDescription(
+        key="wifi_signal",
+        translation_key="wifi_signal",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_wifi("signal"),
+    ),
+    EzvizSensorDescription(
+        key="wifi_ssid",
+        translation_key="wifi_ssid",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_wifi("ssid"),
+    ),
+    EzvizSensorDescription(
+        key="ip_address",
+        translation_key="ip_address",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_wifi("address"),
+    ),
+    EzvizSensorDescription(
+        key="error_count",
+        translation_key="error_count",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_error_count,
+    ),
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: EzvizDL03ConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up sensors."""
+    coordinator = entry.runtime_data
+    async_add_entities(
+        [
+            *(EzvizStatusSensor(coordinator, desc) for desc in SENSORS),
+            EzvizLastEventSensor(coordinator, "event"),
+        ]
+    )
+
+
+class EzvizStatusSensor(EzvizDL03Entity, SensorEntity):
+    """A value read from the device status."""
+
+    entity_description: EzvizSensorDescription
+
+    def __init__(
+        self, coordinator: EzvizDL03Coordinator, description: EzvizSensorDescription
+    ) -> None:
+        """Initialize."""
+        super().__init__(coordinator, description.key)
+        self.entity_description = description
 
     @property
-    def native_value(self):
-        data = self.coordinator.data.get(self.serial, {})
-        power = data.get("STATUS", {}).get("optionals", {}).get("multiPower", [])
-        return power[0].get("Remaining") if power else None
+    def native_value(self) -> Any:
+        """Return the value."""
+        return self.entity_description.value_fn(self.device_data)
 
-class EzvizEventSensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Ostatnie Zdarzenie"
-        self._attr_icon = "mdi:history"
-        self._attr_unique_id = f"{serial}_event" # PRZYWRÓCONO ID Z 2.9.0
+
+class EzvizLastEventSensor(EzvizDL03Entity, SensorEntity):
+    """Text of the latest lock event, with who/how as attributes."""
+
+    _attr_translation_key = "last_event"
 
     @property
-    def native_value(self):
-        return getattr(self.coordinator, "last_event", "Brak danych")
-
-class EzvizWifiSignalSensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Sygnał Wi-Fi"
-        self._attr_native_unit_of_measurement = "%"
-        self._attr_unique_id = f"{serial}_wifi_signal"
+    def native_value(self) -> str | None:
+        """Return the event message."""
+        event = self.coordinator.last_event
+        return event.message[:255] if event else None
 
     @property
-    def native_value(self):
-        return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("signal")
-
-class EzvizWifiSSIDSensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Sieć Wi-Fi"
-        self._attr_icon = "mdi:wifi-cog"
-        self._attr_unique_id = f"{serial}_wifi_ssid"
-
-    @property
-    def native_value(self):
-        return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("ssid")
-
-class EzvizIPAddressSensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Adres IP"
-        self._attr_icon = "mdi:ip-network"
-        self._attr_unique_id = f"{serial}_ip_address"
-
-    @property
-    def native_value(self):
-        return self.coordinator.data.get(self.serial, {}).get("WIFI", {}).get("address")
-
-class EzvizErrorCountSensor(EzvizBaseSensor):
-    def __init__(self, coordinator, serial):
-        super().__init__(coordinator, serial)
-        self._attr_name = "Ezviz Błędne Próby"
-        self._attr_icon = "mdi:alert-lock"
-        self._attr_unique_id = f"{serial}_error_count"
-
-    @property
-    def native_value(self):
-        feat = self.coordinator.data.get(self.serial, {}).get("FEATURE_INFO", {}).get("0", {})
-        return feat.get("DoorLock", {}).get("DoorLockMgr", {}).get("TryErrLock", {}).get("errCount", 0)
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return event details."""
+        event = self.coordinator.last_event
+        if event is None:
+            return None
+        return {
+            "type": event.kind,
+            "user": event.user,
+            "method": event.method,
+            "time": event.time,
+            "alarm_type": event.alarm_type,
+        }

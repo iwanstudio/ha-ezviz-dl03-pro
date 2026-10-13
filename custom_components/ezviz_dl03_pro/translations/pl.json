@@ -1,0 +1,107 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Logowanie Ezviz DL03 Pro",
+        "description": "Podaj dane konta EZVIZ i numer seryjny zamka (naklejka na zamku lub w aplikacji EZVIZ).",
+        "data": {
+          "username": "E-mail / użytkownik",
+          "password": "Hasło",
+          "serial_number": "Numer seryjny zamka",
+          "region": "Region"
+        }
+      },
+      "mfa": {
+        "title": "Kod weryfikacyjny",
+        "description": "EZVIZ wysłał kod weryfikacyjny (SMS lub e-mail). Wpisz go poniżej.",
+        "data": {
+          "mfa_code": "Kod weryfikacyjny"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Zaloguj się ponownie",
+        "description": "Logowanie do konta {username} przestało działać. Podaj aktualne hasło.",
+        "data": {
+          "password": "Hasło"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie udało się połączyć z EZVIZ",
+      "invalid_auth": "Błędny login lub hasło",
+      "invalid_mfa": "Nieprawidłowy kod weryfikacyjny",
+      "device_not_found": "Na tym koncie nie ma zamka o podanym numerze seryjnym",
+      "unknown": "Wystąpił nieoczekiwany błąd"
+    },
+    "abort": {
+      "already_configured": "Ten zamek jest już dodany",
+      "reauth_successful": "Ponowne logowanie powiodło się"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje zamka",
+        "data": {
+          "use_push": "Powiadomienia push (MQTT)",
+          "poll_interval": "Odpytywanie o zdarzenia bez push (s)",
+          "relock_seconds": "Uznaj za zamknięty po otwarciu (s, 0 = nigdy)",
+          "remote_control": "Zdalne otwieranie i zamykanie z Home Assistant"
+        },
+        "data_description": {
+          "use_push": "Zdarzenia przychodzą natychmiast i bez ciągłego odpytywania chmury. Gdy push nie działa, integracja sama wraca do odpytywania.",
+          "poll_interval": "Używane tylko, gdy push jest wyłączony lub niedostępny. Krótszy czas oznacza więcej zapytań do chmury EZVIZ.",
+          "relock_seconds": "DL03 Pro nie zgłasza zamknięcia, więc stan wraca na „zamknięty” po tym czasie.",
+          "remote_control": "Dodaje encję zamka, którą można otworzyć z Home Assistant. Włączaj świadomie."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "lock_status": { "name": "Zamek" },
+      "door": { "name": "Drzwi" },
+      "doorbell": { "name": "Dzwonek" }
+    },
+    "sensor": {
+      "wifi_signal": { "name": "Sygnał Wi-Fi" },
+      "wifi_ssid": { "name": "Sieć Wi-Fi" },
+      "ip_address": { "name": "Adres IP" },
+      "error_count": { "name": "Błędne próby odblokowania" },
+      "last_event": {
+        "name": "Ostatnie zdarzenie",
+        "state_attributes": {
+          "type": { "name": "Typ" },
+          "user": { "name": "Użytkownik" },
+          "method": { "name": "Sposób" },
+          "time": { "name": "Czas" },
+          "alarm_type": { "name": "Kod zdarzenia" }
+        }
+      }
+    },
+    "event": {
+      "doorbell_event": {
+        "name": "Naciśnięcie dzwonka",
+        "state_attributes": {
+          "event_type": { "state": { "ring": "Dzwonek" } }
+        }
+      },
+      "activity_event": {
+        "name": "Aktywność zamka",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unlocked": "Otwarcie",
+              "locked": "Zamknięcie",
+              "other": "Inne"
+            }
+          }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unlock_failed": { "message": "Nie udało się otworzyć zamka: {error}" },
+    "lock_failed": { "message": "Nie udało się zamknąć zamka: {error}" }
+  }
+}

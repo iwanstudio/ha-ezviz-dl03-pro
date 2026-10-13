@@ -9,7 +9,6 @@ import logging
 from typing import Any
 
 from pyezvizapi import EzvizClient
-from pyezvizapi.camera import EzvizCamera
 from pyezvizapi.exceptions import (
     EzvizAuthTokenExpired,
     EzvizAuthVerificationCode,
@@ -47,6 +46,7 @@ from .const import (
     STATUS_INTERVAL,
 )
 from .events import LockEvent, sort_key
+from .remote import send_lock_command
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,6 +90,8 @@ class EzvizDL03Coordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.platforms: list[str] = []
         # Last raw alarm list (trimmed), for diagnostics
         self.recent_alarms: list[dict[str, Any]] = []
+        # Route that last worked for remote lock/unlock, for diagnostics
+        self.last_remote: dict[str, Any] | None = None
 
         self._seen_ids: dict[str, None] = {}
         self._primed = False
@@ -367,18 +369,17 @@ class EzvizDL03Coordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_remote(self, unlock: bool) -> None:
         """Unlock or lock the door through the Ezviz cloud."""
 
-        def _run() -> bool:
-            lock = EzvizCamera(self.client, self.serial, self.device_data)
-            return lock.door_unlock() if unlock else lock.door_lock()
-
         try:
-            await self.hass.async_add_executor_job(_run)
+            self.last_remote = await self.hass.async_add_executor_job(
+                send_lock_command, self.client, self.serial, self.device_data, unlock
+            )
         except (PyEzvizError, *TRANSIENT_ERRORS) as err:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="unlock_failed" if unlock else "lock_failed",
                 translation_placeholders={"error": str(err)},
             ) from err
+        _LOGGER.debug("Remote %s accepted: %s", "unlock" if unlock else "lock", self.last_remote)
         self.set_unlocked(unlock)
         self.async_update_listeners()
 

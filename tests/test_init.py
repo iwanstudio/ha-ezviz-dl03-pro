@@ -15,6 +15,7 @@ from pytest_homeassistant_custom_component.common import (
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
@@ -262,8 +263,54 @@ async def test_remote_control_lock_entity(
     await hass.services.async_call(
         "lock", "unlock", {"entity_id": lock_id}, blocking=True
     )
-    assert mock_client.remote_unlock.called
+    method, path = mock_client._request_json.call_args.args
+    assert (method, path) == (
+        "PUT",
+        f"/v3/iot-feature/action/{SERIAL}/DoorLock/0/DoorLockMgr/RemoteUnlockReq",
+    )
+    body = mock_client._request_json.call_args.kwargs["json_body"]["unLockInfo"]
+    assert body["bindCode"] == "signuid"
+    assert body["lockNo"] == 2
     assert hass.states.get(lock_id).state == "unlocked"
+
+
+async def test_remote_unlock_rejected_is_reported(
+    hass: HomeAssistant, config_entry: MockConfigEntry, mock_client: MagicMock
+) -> None:
+    """A rejected command is an error, not a silent success (the 4.0 bug)."""
+    config_entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        config_entry, options={CONF_USE_PUSH: False, CONF_REMOTE_CONTROL: True}
+    )
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    lock_id = _eid(hass, "lock", "lock")
+
+    mock_client._request_json.return_value = {
+        "meta": {"code": 2009, "message": "device offline"}
+    }
+    with pytest.raises(HomeAssistantError, match="2009"):
+        await hass.services.async_call(
+            "lock", "unlock", {"entity_id": lock_id}, blocking=True
+        )
+    # both lock numbers were tried
+    assert mock_client._request_json.call_count == 2
+    assert hass.states.get(lock_id).state == "locked"
+
+    # second variant accepted
+    mock_client._request_json.reset_mock()
+    mock_client._request_json.side_effect = [
+        {"meta": {"code": 2009}},
+        {"meta": {"code": 200}},
+    ]
+    await hass.services.async_call(
+        "lock", "unlock", {"entity_id": lock_id}, blocking=True
+    )
+    assert config_entry.runtime_data.last_remote == {
+        "resource": "DoorLock",
+        "index": "0",
+        "lock_no": 1,
+    }
 
 
 async def test_push_triggers_fetch(

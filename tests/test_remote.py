@@ -12,6 +12,7 @@ from custom_components.ezviz_dl03_pro.remote import _error_detail, lock_routes
 
 def _http_error(status: int, body: dict | None, text: str = "") -> HTTPError:
     response = MagicMock()
+    response.__bool__.return_value = False  # like requests.Response for 4xx/5xx
     response.status_code = status
     response.json.side_effect = ValueError if body is None else None
     response.json.return_value = body

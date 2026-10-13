@@ -65,7 +65,10 @@ def _error_detail(err: Exception) -> str:
     pyezvizapi raises HTTPError without a message; the real reason is in the
     wrapped requests response.
     """
-    response = getattr(err.__cause__, "response", None) or getattr(err, "response", None)
+    # requests.Response is falsy for 4xx/5xx, so compare with None explicitly.
+    response = getattr(err.__cause__, "response", None)
+    if response is None:
+        response = getattr(err, "response", None)
     if response is None:
         return str(err) or type(err).__name__
     parts = [f"HTTP {response.status_code}"]

@@ -21,6 +21,14 @@ SERIAL = "BF3639401"
 DEVICE = {
     SERIAL: {
         "STATUS": {"optionals": {"dlDoor": 0, "multiPower": [{"Remaining": 27}]}},
+        "resourceInfos": [
+            {
+                "resourceId": "28cbcd4f80874093a48cb314b1065384",
+                "localIndex": "0",
+                "resourceIdentifier": "DoorLock",
+                "resourceCategory": "DoorLock",
+            }
+        ],
         "WIFI": {"signal": 94, "ssid": "Tenda_O3", "address": "192.168.3.125"},
         "FEATURE_INFO": {
             "0": {"DoorLock": {"DoorLockMgr": {"TryErrLock": {"errCount": 0}}}}
@@ -64,6 +72,9 @@ def mock_client() -> Generator[MagicMock]:
     """Mock EzvizClient everywhere."""
     client = MagicMock()
     client.get_device_infos.return_value = DEVICE
+    client._token = {"username": "internal-user"}
+    client.get_latest_terminal_bind.return_value = ("signuid", "Hassio")
+    client._request_json.return_value = {"meta": {"code": 200}}
     client.get_alarminfo.return_value = {
         "alarms": [alarm("old-2", "Martyna unlocked the door with fingerprint")]
     }

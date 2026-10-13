@@ -1,7 +1,5 @@
 {
   "name": "Ezviz DL03 Pro Lock",
-  "content_type": "integration",
-  "homeassistant": "2024.1.0",
-  "iot_class": "cloud_polling",
+  "homeassistant": "2025.2.0",
   "render_readme": true
 }

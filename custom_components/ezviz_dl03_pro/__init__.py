@@ -1,89 +1,82 @@
-import asyncio
-from datetime import timedelta
+"""The Ezviz DL03 Pro lock integration."""
+
+from __future__ import annotations
+
 import logging
-import time
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+
 from pyezvizapi import EzvizClient
-from .const import DOMAIN
+from pyezvizapi.exceptions import PyEzvizError
+import requests
+
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+
+from .const import (
+    CONF_REGION,
+    CONF_REMOTE_CONTROL,
+    CONF_SERIAL,
+    DEFAULT_REGION,
+    DEFAULT_REMOTE_CONTROL,
+)
+from .coordinator import EzvizDL03ConfigEntry, EzvizDL03Coordinator, is_auth_error
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(hass, entry):
-    client = EzvizClient(entry.data["username"], entry.data["password"], entry.data.get("region", "eu"))
-    serial_target = entry.data["serial_number"].strip()
+BASE_PLATFORMS = [Platform.BINARY_SENSOR, Platform.EVENT, Platform.SENSOR]
 
-    async def async_update_data():
-        """Standardowe pobieranie danych - rygiel tu ignorujemy."""
-        def fetch():
-            try:
-                client.login()
-            except:
-                pass
-            return client.get_device_infos()
-        
-        return await hass.async_add_executor_job(fetch)
 
-    coordinator = DataUpdateCoordinator(
-        hass, _LOGGER, name="ezviz_dl03_pro",
-        update_method=async_update_data,
-        update_interval=timedelta(seconds=20),
+def _platforms(entry: EzvizDL03ConfigEntry) -> list[Platform]:
+    if entry.options.get(CONF_REMOTE_CONTROL, DEFAULT_REMOTE_CONTROL):
+        return [*BASE_PLATFORMS, Platform.LOCK]
+    return BASE_PLATFORMS
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: EzvizDL03ConfigEntry) -> bool:
+    """Set up the lock from a config entry."""
+    serial = entry.data[CONF_SERIAL].strip()
+    if entry.unique_id is None:
+        # Entries created before 4.0 had no unique id.
+        hass.config_entries.async_update_entry(entry, unique_id=serial.upper())
+
+    client = EzvizClient(
+        entry.data[CONF_USERNAME],
+        entry.data[CONF_PASSWORD],
+        entry.data.get(CONF_REGION, DEFAULT_REGION),
     )
+    try:
+        await hass.async_add_executor_job(client.login)
+    except PyEzvizError as err:
+        if is_auth_error(err):
+            raise ConfigEntryAuthFailed(str(err)) from err
+        raise ConfigEntryNotReady(f"Ezviz login failed: {err}") from err
+    except (requests.RequestException, OSError) as err:
+        raise ConfigEntryNotReady(f"Cannot reach Ezviz: {err}") from err
 
-    coordinator.doorbell_ringing = False
-    coordinator.last_event = "System gotowy"
-    coordinator.last_event_id = ""
-    coordinator.lock_state = 0 
-    coordinator.unlock_time = 0 # Śledzi czas otwarcia
-
+    coordinator = EzvizDL03Coordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    coordinator.platforms = _platforms(entry)
+    entry.runtime_data = coordinator
 
-    async def fast_listener():
-        while True:
-            try:
-                def get_alarms():
-                    return client.get_alarminfo(serial_target)
-                
-                response = await hass.async_add_executor_job(get_alarms)
-                alarms = response.get("alarms", [])
-                
-                if alarms and isinstance(alarms, list) and len(alarms) > 0:
-                    latest = alarms[0]
-                    alarm_id = latest.get("alarmId")
-                    msg_text = latest.get("alarmMessage", "")
-                    
-                    if alarm_id != coordinator.last_event_id:
-                        coordinator.last_event_id = alarm_id
-                        coordinator.last_event = msg_text
-                        low_msg = msg_text.lower()
-                        
-                        # Otwieramy zamek i zapisujemy czas
-                        if "unlock" in low_msg:
-                            coordinator.lock_state = 1
-                            coordinator.unlock_time = time.time()
-                        elif "lock" in low_msg:
-                            # Na wypadek, gdyby kiedyś zaktualizowali firmware
-                            coordinator.lock_state = 0
-                        
-                        if "rings" in low_msg or "bell" in low_msg or "calling" in low_msg:
-                            coordinator.doorbell_ringing = True
-                            coordinator.async_set_updated_data(coordinator.data)
-                            await asyncio.sleep(7)
-                            coordinator.doorbell_ringing = False
-                        else:
-                            coordinator.async_set_updated_data(coordinator.data)
-                
-                # --- MAGIA Z WERSJI 2.9.0 ---
-                # Jeśli zamek jest w systemie OTWARTY i minęło 25 sekund od otwarcia:
-                if coordinator.lock_state == 1 and (time.time() - coordinator.unlock_time) > 25:
-                    coordinator.lock_state = 0 # Automatyczny powrót na Zamknięty
-                    coordinator.async_set_updated_data(coordinator.data)
-                    
-            except Exception as err:
-                _LOGGER.error("Błąd Listenera: %s", err)
-            
-            await asyncio.sleep(2)
+    await hass.config_entries.async_forward_entry_setups(entry, coordinator.platforms)
+    await coordinator.async_start_events()
 
-    entry.async_create_background_task(hass, fast_listener(), "ezviz-pro-turbo")
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor"])
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
+
+
+async def _async_update_listener(
+    hass: HomeAssistant, entry: EzvizDL03ConfigEntry
+) -> None:
+    """Reload when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: EzvizDL03ConfigEntry) -> bool:
+    """Unload a config entry."""
+    unloaded = await hass.config_entries.async_unload_platforms(
+        entry, entry.runtime_data.platforms
+    )
+    if unloaded:
+        await entry.runtime_data.async_shutdown()
+    return unloaded

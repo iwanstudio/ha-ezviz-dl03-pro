@@ -30,11 +30,14 @@ Unofficial, advanced integration for the **Ezviz DL03 Pro** smart lock. Specific
 
 ## ✨ Funkcje / Features
 
-* **Real-time Status:** Szybka aktualizacja stanu rygla i drzwi / Near instant lock and door status updates.
-* **Doorbell:** Natychmiastowe powiadomienia o naciśnięciu dzwonka / Immediate doorbell ring notifications.
-* **Event Log:** Sensor rozpoznający osoby (zgodnie z aplikacją EZVIZ) / User identification (as defined in EZVIZ app).
-* **Battery:** Precyzyjny poziom baterii (%) / Accurate battery level monitoring.
-* **Dynamic Icons:** Ikony zmieniające się w zależności od stanu / State-dependent dynamic icons.
+* **Push w czasie rzeczywistym (MQTT):** zdarzenia przychodzą natychmiast, bez odpytywania chmury co 2 s. Gdy push nie działa, integracja sama przełącza się na odpytywanie. / **Real-time push (MQTT)** with automatic polling fallback.
+* **Stan rygla:** wyliczany ze zdarzeń, z konfigurowalnym czasem automatycznego „zamknięcia”. / Lock state derived from events, configurable auto-relock.
+* **Dzwonek:** encja `event` typu doorbell + czujnik binarny. / Doorbell `event` entity + binary sensor.
+* **Aktywność zamka:** encja `event` (otwarcie/zamknięcie/inne) z informacją **kto** i **czym** otworzył (np. Martyna, odcisk palca). / Lock activity `event` entity with **who** and **how**.
+* **Zdarzenie na szynie HA** `ezviz_dl03_pro_event` dla automatyzacji. / HA bus event for automations.
+* **Zdalne otwieranie (opcjonalne):** encja `lock`, domyślnie wyłączona. / Optional remote lock/unlock entity (off by default).
+* **Bateria, drzwi, Wi-Fi, błędne próby, diagnostyka.** / Battery, door, Wi-Fi, failed attempts, diagnostics.
+* **Ponowne logowanie i kod weryfikacyjny (2FA)** obsługiwane w interfejsie. / Re-auth and verification code (2FA) supported in the UI.
 
 ---
 
@@ -58,11 +61,35 @@ Unofficial, advanced integration for the **Ezviz DL03 Pro** smart lock. Specific
 
 ### [PL] Dodawanie urządzenia
 Przejdź do **Ustawienia -> Urządzenia oraz usługi -> Dodaj integrację** i wyszukaj: `Ezviz DL03 Pro Lock`.
-Wymagane dane: **Email, Hasło, Numer seryjny urządzenia.**
+Wymagane dane: **Email, Hasło, Numer seryjny urządzenia.** Dane są sprawdzane od razu; jeśli konto ma weryfikację dwuetapową, pojawi się pole na kod.
 
 ### [EN] Adding the device
 Go to **Settings -> Devices & Services -> Add Integration** and search for: `Ezviz DL03 Pro Lock`.
-Required data: **Email, Password, Device Serial Number.**
+Required data: **Email, Password, Device Serial Number.** Credentials are verified; accounts with 2FA get a code step.
+
+### Opcje / Options (Konfiguruj / Configure)
+| Opcja / Option | Domyślnie / Default | Opis / Description |
+|---|---|---|
+| Push (MQTT) | ✅ | Natychmiastowe zdarzenia / instant events |
+| Odpytywanie bez push / Polling without push | 5 s | Tylko gdy push nie działa / only when push is unavailable |
+| Auto „zamknięcie” / Auto relock | 25 s | 0 = nigdy / never |
+| Zdalne sterowanie / Remote control | ❌ | Dodaje encję `lock` / adds a `lock` entity |
+
+### Przykład automatyzacji / Automation example
+```yaml
+triggers:
+  - trigger: state
+    entity_id: event.zamek_dl03_pro_bf3639401_aktywnosc_zamka
+conditions:
+  - condition: state
+    entity_id: event.zamek_dl03_pro_bf3639401_aktywnosc_zamka
+    attribute: event_type
+    state: unlocked
+actions:
+  - action: notify.notify
+    data:
+      message: "{{ trigger.to_state.attributes.user }} otworzył(a) drzwi ({{ trigger.to_state.attributes.method }})"
+```
 
 ---
 

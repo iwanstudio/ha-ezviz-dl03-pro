@@ -1,0 +1,107 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ezviz DL03 Pro login",
+        "description": "Enter your EZVIZ account and the lock's serial number (label on the lock or in the EZVIZ app).",
+        "data": {
+          "username": "E-mail / username",
+          "password": "Password",
+          "serial_number": "Lock serial number",
+          "region": "Region"
+        }
+      },
+      "mfa": {
+        "title": "Verification code",
+        "description": "EZVIZ sent you a verification code (SMS or e-mail). Enter it below.",
+        "data": {
+          "mfa_code": "Verification code"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Log in again",
+        "description": "Logging in to {username} stopped working. Enter the current password.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to EZVIZ",
+      "invalid_auth": "Invalid username or password",
+      "invalid_mfa": "Invalid verification code",
+      "device_not_found": "No lock with this serial number in the account",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This lock is already configured",
+      "reauth_successful": "Re-authentication was successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lock options",
+        "data": {
+          "use_push": "Push notifications (MQTT)",
+          "poll_interval": "Event polling without push (s)",
+          "relock_seconds": "Assume locked after an unlock (s, 0 = never)",
+          "remote_control": "Remote lock/unlock from Home Assistant"
+        },
+        "data_description": {
+          "use_push": "Events arrive instantly without constantly polling the cloud. Falls back to polling automatically if push is unavailable.",
+          "poll_interval": "Only used when push is off or unavailable. Shorter means more requests to the EZVIZ cloud.",
+          "relock_seconds": "The DL03 Pro does not report locking, so the state returns to locked after this time.",
+          "remote_control": "Adds a lock entity that can unlock the door from Home Assistant. Enable deliberately."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "lock_status": { "name": "Lock" },
+      "door": { "name": "Door" },
+      "doorbell": { "name": "Doorbell" }
+    },
+    "sensor": {
+      "wifi_signal": { "name": "Wi-Fi signal" },
+      "wifi_ssid": { "name": "Wi-Fi network" },
+      "ip_address": { "name": "IP address" },
+      "error_count": { "name": "Failed unlock attempts" },
+      "last_event": {
+        "name": "Last event",
+        "state_attributes": {
+          "type": { "name": "Type" },
+          "user": { "name": "User" },
+          "method": { "name": "Method" },
+          "time": { "name": "Time" },
+          "alarm_type": { "name": "Event code" }
+        }
+      }
+    },
+    "event": {
+      "doorbell_event": {
+        "name": "Doorbell press",
+        "state_attributes": {
+          "event_type": { "state": { "ring": "Ring" } }
+        }
+      },
+      "activity_event": {
+        "name": "Lock activity",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unlocked": "Unlocked",
+              "locked": "Locked",
+              "other": "Other"
+            }
+          }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unlock_failed": { "message": "Failed to unlock: {error}" },
+    "lock_failed": { "message": "Failed to lock: {error}" }
+  }
+}

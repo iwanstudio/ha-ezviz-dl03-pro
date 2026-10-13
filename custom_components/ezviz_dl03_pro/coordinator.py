@@ -88,6 +88,8 @@ class EzvizDL03Coordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.last_event: LockEvent | None = None
         self.push_active = False
         self.platforms: list[str] = []
+        # Last raw alarm list (trimmed), for diagnostics
+        self.recent_alarms: list[dict[str, Any]] = []
 
         self._seen_ids: dict[str, None] = {}
         self._primed = False
@@ -214,8 +216,21 @@ class EzvizDL03Coordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     @callback
     def handle_alarms(self, alarms: list[dict[str, Any]]) -> bool:
-        """Process an alarm list (newest first). Returns True if any were new."""
+        """Process an alarm list (any order). Returns True if any were new."""
         with_id = [a for a in alarms if a.get("alarmId")]
+        self.recent_alarms = [
+            {
+                key: a.get(key)
+                for key in (
+                    "alarmId",
+                    "alarmType",
+                    "alarmStartTime",
+                    "alarmStartTimeStr",
+                    "alarmMessage",
+                )
+            }
+            for a in with_id
+        ]
 
         if not self._primed:
             # First fetch after start: remember history, trigger nothing.
@@ -223,14 +238,15 @@ class EzvizDL03Coordinator(DataUpdateCoordinator[dict[str, Any]]):
             for alarm in with_id:
                 self._remember(str(alarm["alarmId"]))
             if with_id:
-                self.last_event = LockEvent.from_alarm(with_id[0])
+                self.last_event = LockEvent.from_alarm(max(with_id, key=sort_key))
                 self.async_update_listeners()
             return False
 
         new = [a for a in with_id if str(a["alarmId"]) not in self._seen_ids]
         if not new:
             return False
-        # Oldest first; stable sort keeps API order when timestamps are missing.
+        # Oldest first by time; with no timestamps assume the API's newest-first
+        # order (stable sort keeps it).
         new.reverse()
         new.sort(key=sort_key)
         for alarm in new:

@@ -39,5 +39,6 @@ async def async_get_config_entry_diagnostics(
         "push_active": coordinator.push_active,
         "unlocked": coordinator.unlocked,
         "last_event": event.as_dict() if event else None,
+        "recent_alarms": coordinator.recent_alarms,
         "device": async_redact_data(coordinator.device_data, TO_REDACT),
     }

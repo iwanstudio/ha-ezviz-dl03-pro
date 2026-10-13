@@ -70,9 +70,14 @@ class LockEvent:
         return asdict(self)
 
 
-def sort_key(alarm: dict[str, Any]) -> float:
-    """Sort key putting alarms in chronological order (0 when unknown)."""
+def sort_key(alarm: dict[str, Any]) -> tuple[float, str]:
+    """Chronological sort key; the API does not return alarms newest-first.
+
+    Uses the numeric start time when present, then the "YYYY-MM-DD HH:MM:SS"
+    string (sorts correctly as text). Unknown times sort as equal.
+    """
     try:
-        return float(alarm.get("alarmStartTime") or 0)
+        numeric = float(alarm.get("alarmStartTime") or 0)
     except (TypeError, ValueError):
-        return 0.0
+        numeric = 0.0
+    return numeric, str(alarm.get("alarmStartTimeStr") or "")

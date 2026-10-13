@@ -323,3 +323,32 @@ async def test_unload(
     assert await hass.config_entries.async_unload(config_entry.entry_id)
     await hass.async_block_till_done()
     assert config_entry.state is ConfigEntryState.NOT_LOADED
+
+
+async def test_alarm_order_from_timestamps(
+    hass: HomeAssistant, config_entry: MockConfigEntry, mock_client: MagicMock
+) -> None:
+    """The cloud returns alarms in no particular order; time decides (seen live)."""
+    mock_client.get_alarminfo.return_value = {
+        "alarms": [
+            alarm("a", "Martyna unlocked the door with fingerprint")
+            | {"alarmStartTimeStr": "2026-10-08 12:18:52"},
+            alarm("b", "Jan unlocked the door with card")
+            | {"alarmStartTimeStr": "2026-10-13 14:35:20"},
+            alarm("c", "Guest rings the doorbell")
+            | {"alarmStartTimeStr": "2026-10-10 09:00:00"},
+        ]
+    }
+    events = async_capture_events(hass, BUS_EVENT)
+    await _setup(hass, config_entry)
+    last = hass.states.get(_eid(hass, "sensor", "event"))
+    assert last.attributes["user"] == "Jan"
+
+    mock_client.get_alarminfo.return_value["alarms"] += [
+        alarm("e", "Door locked") | {"alarmStartTimeStr": "2026-10-13 22:30:05"},
+        alarm("d", "Ola unlocked the door with password")
+        | {"alarmStartTimeStr": "2026-10-13 22:30:00"},
+    ]
+    await _poll(hass, config_entry)
+    assert [e.data["kind"] for e in events] == ["unlocked", "locked"]
+    assert hass.states.get(_eid(hass, "binary_sensor", "lock_status")).state == "off"

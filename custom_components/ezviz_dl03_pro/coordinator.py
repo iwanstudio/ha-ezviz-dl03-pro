@@ -379,7 +379,9 @@ class EzvizDL03Coordinator(DataUpdateCoordinator[dict[str, Any]]):
                 translation_key="unlock_failed" if unlock else "lock_failed",
                 translation_placeholders={"error": str(err)},
             ) from err
-        _LOGGER.debug("Remote %s accepted: %s", "unlock" if unlock else "lock", self.last_remote)
+        _LOGGER.debug(
+            "Remote %s accepted: %s", "unlock" if unlock else "lock", self.last_remote
+        )
         self.set_unlocked(unlock)
         self.async_update_listeners()
 

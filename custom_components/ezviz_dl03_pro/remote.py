@@ -102,48 +102,64 @@ def send_lock_command(
     """Send unlock/lock, trying the known route variants. Returns what worked."""
     token = getattr(client, "_token", {}) or {}
     user = str(token.get("username") or "")
-    bind_code, user_name = f"{FEATURE_CODE}{user}", user
+    # Credentials to try: the Home Assistant terminal bind (unlock only), then
+    # the legacy feature-code bind used by older firmware.
+    binds: list[tuple[str, str, str]] = []
     if unlock:
         try:
-            bind_code, user_name = client.get_latest_terminal_bind(
-                terminal_name="Hassio"
-            )
-        except Exception as err:  # noqa: BLE001 - legacy bind code still works on some
-            _LOGGER.debug("No terminal bind, using legacy bind code: %s", err)
+            code, name = client.get_latest_terminal_bind(terminal_name="Hassio")
+            binds.append(("terminal", code, name))
+        except Exception as err:  # noqa: BLE001 - fall back to the legacy bind code
+            _LOGGER.debug("No terminal bind: %s", err)
+    binds.append(("legacy", f"{FEATURE_CODE}{user}", user))
 
     endpoint = API_ENDPOINT_REMOTE_UNLOCK if unlock else API_ENDPOINT_REMOTE_LOCK
     failures: list[str] = []
-    for resource, index in lock_routes(device):
-        for lock_no in LOCK_NUMBERS:
-            payload = {
-                "unLockInfo": {
-                    "bindCode": bind_code,
-                    "lockNo": lock_no,
-                    "streamToken": "",
-                    "userName": user_name,
-                }
+    attempts = [
+        (route, lock_no, bind)
+        for bind in binds
+        for route in lock_routes(device)
+        for lock_no in LOCK_NUMBERS
+    ]
+    for (resource, index), lock_no, (bind_kind, bind_code, user_name) in attempts:
+        label = f"{resource}/{index}/lock{lock_no}/{bind_kind}"
+        payload = {
+            "unLockInfo": {
+                "bindCode": bind_code,
+                "lockNo": lock_no,
+                "streamToken": "",
+                "userName": user_name,
             }
-            path = f"{API_ENDPOINT_IOT_ACTION}{serial}/{resource}/{index}{endpoint}"
-            try:
-                result = client._request_json(  # noqa: SLF001
-                    "PUT", path, json_body=payload, retry_401=True, max_retries=0
-                )
-            except PyEzvizError as err:
-                detail = _error_detail(err)
-                failures.append(f"{resource}/{index}/lock{lock_no}: {detail}")
-                _LOGGER.debug(
-                    "Remote %s failed via %s lockNo=%s: %s", endpoint, path, lock_no, detail
-                )
-                continue
+        }
+        path = f"{API_ENDPOINT_IOT_ACTION}{serial}/{resource}/{index}{endpoint}"
+        try:
+            result = client._request_json(  # noqa: SLF001
+                "PUT", path, json_body=payload, retry_401=True, max_retries=0
+            )
+        except PyEzvizError as err:
+            detail = _error_detail(err)
+            failures.append(f"{label}: {detail}")
             _LOGGER.debug(
-                "Remote %s via %s lockNo=%s -> %s", endpoint, path, lock_no, result
+                "Remote %s failed via %s lockNo=%s: %s", endpoint, path, lock_no, detail
             )
-            if _is_ok(result):
-                return {"resource": resource, "index": index, "lock_no": lock_no}
-            meta = result.get("meta") if isinstance(result, dict) else None
-            message = (meta or {}).get("message") if isinstance(meta, dict) else None
-            failures.append(
-                f"{resource}/{index}/lock{lock_no}: code {_response_code(result)}"
-                + (f" ({message})" if message else "")
-            )
-    raise RemoteCommandFailed("; ".join(failures) or "no route")
+            continue
+        _LOGGER.debug(
+            "Remote %s via %s lockNo=%s -> %s", endpoint, path, lock_no, result
+        )
+        if _is_ok(result):
+            return {
+                "resource": resource,
+                "index": index,
+                "lock_no": lock_no,
+                "bind": bind_kind,
+            }
+        meta = result.get("meta") if isinstance(result, dict) else None
+        message = (meta or {}).get("message") if isinstance(meta, dict) else None
+        failures.append(
+            f"{label}: code {_response_code(result)}"
+            + (f" ({message})" if message else "")
+        )
+    # Collapse identical errors so the message stays readable.
+    unique = list(dict.fromkeys(f.split(": ", 1)[1] for f in failures))
+    summary = unique[0] if len(unique) == 1 else "; ".join(failures)
+    raise RemoteCommandFailed(f"{summary} ({len(failures)} attempts)")

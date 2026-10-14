@@ -35,7 +35,7 @@ Unofficial, advanced integration for the **Ezviz DL03 Pro** smart lock. Specific
 * **Dzwonek:** encja `event` typu doorbell + czujnik binarny. / Doorbell `event` entity + binary sensor.
 * **Aktywność zamka:** encja `event` (otwarcie/zamknięcie/inne) z informacją **kto** i **czym** otworzył (np. Martyna, odcisk palca). / Lock activity `event` entity with **who** and **how**.
 * **Zdarzenie na szynie HA** `ezviz_dl03_pro_event` dla automatyzacji. / HA bus event for automations.
-* **Zdalne otwieranie (opcjonalne):** encja `lock`, domyślnie wyłączona. / Optional remote lock/unlock entity (off by default).
+* **Zdalne otwieranie (eksperymentalne):** encja `lock`, domyślnie wyłączona. ⚠️ DL03 Pro wymaga potwierdzenia na klawiaturze zamka, więc chmura odrzuca samo polecenie zdalne (`code 3, manage failed`). / Experimental remote unlock (off by default); the DL03 Pro requires keypad confirmation, so remote-only unlock is rejected.
 * **Bateria, drzwi, Wi-Fi, błędne próby, diagnostyka.** / Battery, door, Wi-Fi, failed attempts, diagnostics.
 * **Ponowne logowanie i kod weryfikacyjny (2FA)** obsługiwane w interfejsie. / Re-auth and verification code (2FA) supported in the UI.
 

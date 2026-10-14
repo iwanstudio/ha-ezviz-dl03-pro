@@ -52,30 +52,54 @@
           "use_push": "Zdarzenia przychodzą natychmiast i bez ciągłego odpytywania chmury. Gdy push nie działa, integracja sama wraca do odpytywania.",
           "poll_interval": "Używane tylko, gdy push jest wyłączony lub niedostępny. Krótszy czas oznacza więcej zapytań do chmury EZVIZ.",
           "relock_seconds": "DL03 Pro nie zgłasza zamknięcia, więc stan wraca na „zamknięty” po tym czasie.",
-          "remote_control": "Dodaje encję zamka, którą można otworzyć z Home Assistant. Włączaj świadomie."
+          "remote_control": "Eksperymentalne. DL03 Pro wymaga potwierdzenia otwarcia na klawiaturze zamka, a chmura odrzuca samo polecenie zdalne (code 3, manage failed). Na tym modelu zwykle nie działa."
         }
       }
     }
   },
   "entity": {
     "binary_sensor": {
-      "lock_status": { "name": "Zamek" },
-      "door": { "name": "Drzwi" },
-      "doorbell": { "name": "Dzwonek" }
+      "lock_status": {
+        "name": "Zamek"
+      },
+      "door": {
+        "name": "Drzwi"
+      },
+      "doorbell": {
+        "name": "Dzwonek"
+      }
     },
     "sensor": {
-      "wifi_signal": { "name": "Sygnał Wi-Fi" },
-      "wifi_ssid": { "name": "Sieć Wi-Fi" },
-      "ip_address": { "name": "Adres IP" },
-      "error_count": { "name": "Błędne próby odblokowania" },
+      "wifi_signal": {
+        "name": "Sygnał Wi-Fi"
+      },
+      "wifi_ssid": {
+        "name": "Sieć Wi-Fi"
+      },
+      "ip_address": {
+        "name": "Adres IP"
+      },
+      "error_count": {
+        "name": "Błędne próby odblokowania"
+      },
       "last_event": {
         "name": "Ostatnie zdarzenie",
         "state_attributes": {
-          "type": { "name": "Typ" },
-          "user": { "name": "Użytkownik" },
-          "method": { "name": "Sposób" },
-          "time": { "name": "Czas" },
-          "alarm_type": { "name": "Kod zdarzenia" }
+          "type": {
+            "name": "Typ"
+          },
+          "user": {
+            "name": "Użytkownik"
+          },
+          "method": {
+            "name": "Sposób"
+          },
+          "time": {
+            "name": "Czas"
+          },
+          "alarm_type": {
+            "name": "Kod zdarzenia"
+          }
         }
       }
     },
@@ -83,7 +107,11 @@
       "doorbell_event": {
         "name": "Naciśnięcie dzwonka",
         "state_attributes": {
-          "event_type": { "state": { "ring": "Dzwonek" } }
+          "event_type": {
+            "state": {
+              "ring": "Dzwonek"
+            }
+          }
         }
       },
       "activity_event": {
@@ -101,7 +129,11 @@
     }
   },
   "exceptions": {
-    "unlock_failed": { "message": "Nie udało się otworzyć zamka: {error}" },
-    "lock_failed": { "message": "Nie udało się zamknąć zamka: {error}" }
+    "unlock_failed": {
+      "message": "Nie udało się otworzyć zamka: {error}"
+    },
+    "lock_failed": {
+      "message": "Nie udało się zamknąć zamka: {error}"
+    }
   }
 }

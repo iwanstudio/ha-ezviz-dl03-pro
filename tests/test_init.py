@@ -289,12 +289,18 @@ async def test_remote_unlock_rejected_is_reported(
     mock_client._request_json.return_value = {
         "meta": {"code": 2009, "message": "device offline"}
     }
-    with pytest.raises(HomeAssistantError, match="2009"):
+    with pytest.raises(HomeAssistantError, match="code 2009.*4 attempts"):
         await hass.services.async_call(
             "lock", "unlock", {"entity_id": lock_id}, blocking=True
         )
-    # both lock numbers were tried
-    assert mock_client._request_json.call_count == 2
+    # both lock numbers with both bind codes were tried
+    assert mock_client._request_json.call_count == 4
+    binds = [
+        c.kwargs["json_body"]["unLockInfo"]["bindCode"]
+        for c in mock_client._request_json.call_args_list
+    ]
+    assert binds[:2] == ["signuid", "signuid"]
+    assert all(b.endswith("internal-user") for b in binds[2:])
     assert hass.states.get(lock_id).state == "locked"
 
     # second variant accepted
@@ -310,6 +316,7 @@ async def test_remote_unlock_rejected_is_reported(
         "resource": "DoorLock",
         "index": "0",
         "lock_no": 1,
+        "bind": "terminal",
     }
 
 

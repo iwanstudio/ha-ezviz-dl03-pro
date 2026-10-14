@@ -52,30 +52,54 @@
           "use_push": "Events arrive instantly without constantly polling the cloud. Falls back to polling automatically if push is unavailable.",
           "poll_interval": "Only used when push is off or unavailable. Shorter means more requests to the EZVIZ cloud.",
           "relock_seconds": "The DL03 Pro does not report locking, so the state returns to locked after this time.",
-          "remote_control": "Adds a lock entity that can unlock the door from Home Assistant. Enable deliberately."
+          "remote_control": "Experimental. The DL03 Pro requires the unlock to be confirmed on the lock keypad and the cloud rejects a remote-only command (code 3, manage failed). Usually does not work on this model."
         }
       }
     }
   },
   "entity": {
     "binary_sensor": {
-      "lock_status": { "name": "Lock" },
-      "door": { "name": "Door" },
-      "doorbell": { "name": "Doorbell" }
+      "lock_status": {
+        "name": "Lock"
+      },
+      "door": {
+        "name": "Door"
+      },
+      "doorbell": {
+        "name": "Doorbell"
+      }
     },
     "sensor": {
-      "wifi_signal": { "name": "Wi-Fi signal" },
-      "wifi_ssid": { "name": "Wi-Fi network" },
-      "ip_address": { "name": "IP address" },
-      "error_count": { "name": "Failed unlock attempts" },
+      "wifi_signal": {
+        "name": "Wi-Fi signal"
+      },
+      "wifi_ssid": {
+        "name": "Wi-Fi network"
+      },
+      "ip_address": {
+        "name": "IP address"
+      },
+      "error_count": {
+        "name": "Failed unlock attempts"
+      },
       "last_event": {
         "name": "Last event",
         "state_attributes": {
-          "type": { "name": "Type" },
-          "user": { "name": "User" },
-          "method": { "name": "Method" },
-          "time": { "name": "Time" },
-          "alarm_type": { "name": "Event code" }
+          "type": {
+            "name": "Type"
+          },
+          "user": {
+            "name": "User"
+          },
+          "method": {
+            "name": "Method"
+          },
+          "time": {
+            "name": "Time"
+          },
+          "alarm_type": {
+            "name": "Event code"
+          }
         }
       }
     },
@@ -83,7 +107,11 @@
       "doorbell_event": {
         "name": "Doorbell press",
         "state_attributes": {
-          "event_type": { "state": { "ring": "Ring" } }
+          "event_type": {
+            "state": {
+              "ring": "Ring"
+            }
+          }
         }
       },
       "activity_event": {
@@ -101,7 +129,11 @@
     }
   },
   "exceptions": {
-    "unlock_failed": { "message": "Failed to unlock: {error}" },
-    "lock_failed": { "message": "Failed to lock: {error}" }
+    "unlock_failed": {
+      "message": "Failed to unlock: {error}"
+    },
+    "lock_failed": {
+      "message": "Failed to lock: {error}"
+    }
   }
 }
